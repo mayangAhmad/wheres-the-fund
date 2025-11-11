@@ -50,7 +50,7 @@ export default function Nav() {
   ];
 
   return (
-    <section className="p-4 border-b">
+    <header className="sticky top-0 z-50 p-4 border-b bg-background">
       <div className="container mx-auto">
         {/* Desktop Menu */}
         <nav className="hidden justify-between lg:flex">
@@ -93,7 +93,7 @@ export default function Nav() {
           </div>
         </div>
       </div>
-    </section>
+    </header>
   );
 }
 

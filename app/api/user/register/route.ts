@@ -6,6 +6,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+//insert user passed from signupDonor/Ngo
+
 export async function POST(req: Request) {
   const body = await req.json();
   const { id, name, email, role, ssm_number } = body;

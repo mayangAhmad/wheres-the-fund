@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
 
   try {
-    // 1️⃣ Create a new KMS key
+    //Create a new KMS key using same standard format for Ethereum keys
     const key = await kms.send(
       new CreateKeyCommand({
         KeySpec: "ECC_SECG_P256K1",
@@ -30,10 +30,10 @@ export async function POST(req: Request) {
     if (!kmsKeyId)
       throw new Error("Failed to create KMS key: KeyId is undefined");
 
-    // 2️⃣ Derive Ethereum address the same way the signer will
+    //Derive Ethereum address the same way the signer will
     const walletAddress = await getAddressFromKms(kmsKeyId);
 
-    // 3️⃣ Save both to Supabase
+    //Save both to Supabase
     const { error: dbError } = await supabase
       .from("users")
       .update({ wallet_address: walletAddress, kms_key_id: kmsKeyId })

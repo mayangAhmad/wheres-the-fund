@@ -137,3 +137,10 @@
   }
 }
 
+@layer components {
+  .form-block-header {
+    @apply text-lg font-semibold bg-gray-200 p-8 rounded-md border border-b-2 border-gray-300;
+  
+  }
+  
+}

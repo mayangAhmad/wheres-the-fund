@@ -29,6 +29,7 @@ const config: HardhatUserConfig = {
       // Configuration for the built-in Hardhat Network
     },
   },
+  
 };
 
 export default config;

@@ -48,7 +48,7 @@ export default function DonorSignupForm({ supabase, setError }: Props) {
     const role = user_metadata?.role ?? "donor";
     const displayName = user_metadata?.name ?? name ?? "Anonymous";
 
-    // ✅ Insert via secure API route (bypasses RLS)
+    //Add user to the supabase via api route
     const registerRes = await fetch("/api/user/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,7 +65,7 @@ export default function DonorSignupForm({ supabase, setError }: Props) {
       throw new Error(registerError || "User registration failed");
     }
 
-    // ✅ Trigger wallet setup
+    //wallet setup
     await fetch("/api/user/setup-wallet", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,6 +73,7 @@ export default function DonorSignupForm({ supabase, setError }: Props) {
     });
 
     router.push("/auth/login");
+    
   } catch (err: unknown) {
     const message =
       err && typeof err === "object" && "message" in err
