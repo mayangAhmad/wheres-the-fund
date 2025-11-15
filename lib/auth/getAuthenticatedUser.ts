@@ -1,3 +1,4 @@
+//lib/auth/getAuthenticatedUser.ts
 import createClient from "@/lib/supabase/server";
 
 export async function getAuthenticatedUser() {

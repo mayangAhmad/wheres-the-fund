@@ -1,129 +1,158 @@
-// components/forms/CampaignStepTwo.tsx
-"use client"; 
+// @/components/forms/steps/CampaignStepThree.tsx
+"use client";
 
-import { UseFormReturn, useFieldArray } from "react-hook-form"; 
-import { CampaignFormData } from "@/lib/validation/campaignSchema";
+import { UseFormReturn, useFieldArray } from "react-hook-form";
+import { CampaignFormInput } from "@/lib/validation/campaignSchema";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
 
-interface CampaignStepTwoProps {
-  form: UseFormReturn<CampaignFormData>;
+interface CampaignStepThreeProps {
+  form: UseFormReturn<CampaignFormInput>;
 }
 
-export default function CampaignStepThree({ form }: CampaignStepTwoProps) {
-  const { control, register } = form;
-  
-  // 1. Initialize Field Array for Problems (string[])
-  const { 
-    fields: problemFields, 
-    append: appendProblem, 
-    remove: removeProblem 
+export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
+  const { control, register, formState: { errors } } = form;
+
+  const {
+    fields: problemFields,
+    append: appendProblem,
+    remove: removeProblem,
   } = useFieldArray({
     control,
-    name: "problems" as const,
+    name: "problems",
   });
 
-  // 2. Initialize Field Array for Solutions (string[])
-  const { 
-    fields: solutionFields, 
-    append: appendSolution, 
-    remove: removeSolution 
+  const {
+    fields: solutionFields,
+    append: appendSolution,
+    remove: removeSolution,
   } = useFieldArray({
     control,
-    name: "solutions" as const,
+    name: "solutions",
   });
 
   return (
     <>
-      {/* Outer constraint wrapper */}
-      <div className="w-full space-y-8"> 
-        <p className="text-muted-foreground">Share the background and challenges.</p>
-        <h1 className="form-block-header">What is your story?</h1>
-        <hr className="mt-1 border-t border-gray-300" />
+      <h1 className="text-2xl font-bold max-w-6xl mx-auto">
+        📢 Tell us more about your campaign
+      </h1>
+      <p className="text-muted-foreground mb-4 max-w-6xl mx-auto">
+        This section is important for public to know what exactly you are tackling on and how you will execute them.
+      </p>
 
-        {/* 💡 FIX: Main Flex Container for 2 Columns */}
-        <div className="flex flex-col md:flex-row gap-6 w-full">
-            
-            {/* Column 1 (Left): Background Section */}
-            <div className="flex-1 space-y-2"> 
+      {/* Responsive grid: auto-fit with minmax */}
+      <div className="mt-8 grid gap-10 w-full max-w-6xl mx-auto grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+        
+        {/* Background Container */}
+        <div className="rounded-md border min-h-[250px] md:min-h-[300px] lg:min-h-[450px] overflow-hidden">
+            <div className="bg-[#193046] p-4">
+                <h2 className="text-lg font-semibold text-white">📖 What is your story?</h2>
+            </div>
+            <div className="p-6 space-y-4 bg-gray-50">
                 <Label>Background</Label>
-                <Textarea 
-                    {...register("background")} 
-                    placeholder="Background of the campaign" 
-                    className="h-40 resize-none" 
+                <Textarea
+                {...form.register("background")}
+                placeholder="Background of the campaign"
+                maxLength={1000}
+                className="w-full bg-white break-words whitespace-pre-wrap h-24 md:h-32 lg:h-40"
                 />
+                <div className="flex justify-between text-xs text-gray-500">
+                <span>{(form.watch("background") || "").length} / 1000 characters</span>
+                <span>{1000 - (form.watch("background") || "").length} left</span>
+                </div>
+                {typeof errors.background?.message === "string" && (
+                <p className="text-red-500 text-sm">{errors.background.message}</p>
+                )}
+            </div>
             </div>
 
-            {/* Column 2 (Right): Problems AND Solutions */}
-            {/* 💡 FIX: This single flex-1 div now holds the entire second section. */}
-            <div className="flex-1 space-y-8"> 
-                
-                {/* --- Dynamic Problems Section (Stacked Top) --- */}
-                <div className="space-y-4">
-                    <Label className="block">Problems</Label>
-                    
-                    {problemFields.map((field, index) => (
-                        <div key={field.id} className="flex items-start gap-2">
-                            <Textarea 
-                                {...register(`problems.${index}` as const)} 
-                                placeholder={`• Problem ${index + 1}`} 
-                            />
-                            <Button 
-                                variant="default" 
-                                size="icon-sm"
-                                type="button" 
-                                onClick={() => removeProblem(index)}
-                                className="shrink-0 mt-1"
-                            >
-                                -
-                            </Button>
-                        </div>
-                    ))}
-
-                    <Button 
-                        variant="outline" 
-                        type="button" 
-                        onClick={() => appendProblem("")} 
-                        className="w-full"
-                    >
-                        + Add Another Problem
-                    </Button>
+        {/* Problems Container */}
+        <div className="rounded-md border min-h-[250px] md:min-h-[300px] lg:min-h-[450px] overflow-hidden">
+          <div className="bg-[#193046] p-4">
+            <h2 className="text-lg font-semibold text-white">⚠️ Problems</h2>
+          </div>
+          <div className="p-6 space-y-4 bg-gray-50">
+            {problemFields.map((field, index) => (
+              <div key={field.id} className="flex flex-col gap-1 w-full">
+                <div className="flex items-start gap-2 w-full">
+                  <Textarea
+                    {...register(`problems.${index}` as const)}
+                    placeholder={`• Problem ${index + 1}`}
+                    className="w-full bg-white break-words whitespace-pre-wrap h-20 md:h-28 lg:h-32"
+                  />
+                  <Button
+                    variant="default"
+                    size="sm"
+                    type="button"
+                    onClick={() => removeProblem(index)}
+                    className="shrink-0 mt-1"
+                  >
+                    -
+                  </Button>
                 </div>
-
-                {/* --- Dynamic Solutions Section (Stacked Below Problems) --- */}
-                <div className="space-y-4">
-                    <Label className="block">Solutions</Label>
-                    
-                    {solutionFields.map((field, index) => (
-                        <div key={field.id} className="flex items-start gap-2">
-                            <Textarea 
-                                {...register(`solutions.${index}` as const)} 
-                                placeholder={`• Solution ${index + 1}`} 
-                            />
-                            <Button 
-                                variant="default" 
-                                size="icon-sm"
-                                type="button" 
-                                onClick={() => removeSolution(index)}
-                                className="shrink-0 mt-1"
-                            >
-                                -
-                            </Button>
-                        </div>
-                    ))}
-                    
-                    <Button 
-                        variant="outline" 
-                        type="button" 
-                        onClick={() => appendSolution("")} 
-                        className="w-full"
-                    >
-                        + Add Another Solution
-                    </Button>
-                </div>
-            </div>
+                {typeof errors.problems?.[index]?.message === "string" && (
+                  <p className="text-red-500 text-sm">{errors.problems[index]?.message}</p>
+                )}
+              </div>
+            ))}
+            {typeof errors.problems?.message === "string" && (
+              <p className="text-red-500 text-sm">{errors.problems.message}</p>
+            )}
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => appendProblem("")}
+              className="w-full"
+            >
+              + Add Problem
+            </Button>
+          </div>
         </div>
+
+        {/* Solutions Container */}
+        <div className="rounded-md border min-h-[250px] md:min-h-[300px] lg:min-h-[450px] overflow-hidden">
+          <div className="bg-[#193046] p-4">
+            <h2 className="text-lg font-semibold text-white">💡 Solutions</h2>
+          </div>
+          <div className="p-6 space-y-4 bg-gray-50">
+            {solutionFields.map((field, index) => (
+              <div key={field.id} className="flex flex-col gap-1 w-full">
+                <div className="flex items-start gap-2 w-full">
+                  <Textarea
+                    {...register(`solutions.${index}` as const)}
+                    placeholder={`• Solution ${index + 1}`}
+                    className="w-full bg-white break-words whitespace-pre-wrap h-20 md:h-28 lg:h-32"
+                  />
+                  <Button
+                    variant="default"
+                    size="sm"
+                    type="button"
+                    onClick={() => removeSolution(index)}
+                    className="shrink-0 mt-1"
+                  >
+                    -
+                  </Button>
+                </div>
+                {typeof errors.solutions?.[index]?.message === "string" && (
+                  <p className="text-red-500 text-sm">{errors.solutions[index]?.message}</p>
+                )}
+              </div>
+            ))}
+            {typeof errors.solutions?.message === "string" && (
+              <p className="text-red-500 text-sm">{errors.solutions.message}</p>
+            )}
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => appendSolution("")}
+              className="w-full"
+            >
+              + Add Solution
+            </Button>
+          </div>
+        </div>
+
       </div>
     </>
   );

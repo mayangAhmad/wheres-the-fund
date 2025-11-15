@@ -1,3 +1,4 @@
+//lib/supabase/proxy.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { LOGIN_PATH } from "@/constants/common";

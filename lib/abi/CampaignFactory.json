@@ -71,6 +71,18 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "createdAt",
           "type": "uint256"
         }
@@ -111,8 +123,28 @@
         },
         {
           "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "collectedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
           "name": "createdAt",
           "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "closed",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -124,6 +156,16 @@
           "internalType": "string",
           "name": "title",
           "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
         }
       ],
       "name": "createCampaign",
@@ -143,6 +185,11 @@
           "internalType": "string",
           "name": "title",
           "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
@@ -243,8 +290,28 @@
             },
             {
               "internalType": "uint256",
+              "name": "targetAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "collectedAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
               "name": "createdAt",
               "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "closed",
+              "type": "bool"
             }
           ],
           "internalType": "struct CampaignFactory.Campaign",

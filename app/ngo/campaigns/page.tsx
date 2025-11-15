@@ -1,3 +1,4 @@
+//app/ngo/campaigns/page.tsx
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import { mapToNgoUser } from "@/lib/auth/mapToNgoUser";
 
@@ -10,7 +11,7 @@ export default async function CampaignsPage() {
       <h2 className="text-2xl font-bold">📋 My Campaigns</h2>
 
       {user.campaigns.length === 0 ? (
-        <p className="text-muted-foreground">You haven’t created any campaigns yet.</p>
+        <p className="text-muted-foreground">You haven&apos;t created any campaigns yet.</p>
       ) : (
         <ul className="space-y-4">
           {user.campaigns.map((campaign) => (
