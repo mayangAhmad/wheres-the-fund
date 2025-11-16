@@ -19,6 +19,7 @@ import CampaignStepOne from "./CampaignStepOne";
 import CampaignStepTwo from "./CampaignStepTwo";
 import CampaignStepThree from "./CampaignStepThree";
 import { Button } from "../ui/button";
+import LoadingModal from "./LoadingModal";
 
 type ApiPayload = Omit<CampaignFormData, "photo"> & { image_url: string };
 
@@ -117,6 +118,7 @@ export default function CreateCampaignForm({ user }: { user: User }) {
   };
 
   return (
+    <>
     <form onSubmit={form.handleSubmit(onSubmit)} className="w-full p-6 space-y-12">
       {step === 0 && <CampaignStepOne form={form} />}
       {step === 1 && <CampaignStepTwo form={form} />}
@@ -139,5 +141,9 @@ export default function CreateCampaignForm({ user }: { user: User }) {
         )}
       </div>
     </form>
+
+    {/* ✅ Loading modal */}
+      <LoadingModal open={isSubmitting} />
+    </>
   );
 }
