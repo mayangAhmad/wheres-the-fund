@@ -22,7 +22,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-import AuthButton from "./auth-button";
+import AuthButton from "../auth/auth-button";
 
 interface MenuItem {
   title: string;

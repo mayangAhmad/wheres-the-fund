@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg"];
 
 const picSchema = z.object({
   name: z.string().min(2, { message: "Name cannot be empty" }).max(100),
@@ -24,7 +24,7 @@ export const campaignFormInputSchema = z.object({
     .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, "Max file size is 5MB.")
     .refine(
       (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
-      "Only .jpg, .png, and .webp formats are supported."
+      "Only .jpg, .png, and .jpeg formats are supported."
     ),
 
   goal_amount: z.string().min(1, "Target amount is required."),

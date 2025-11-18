@@ -10,7 +10,6 @@ import {
 } from "@/lib/validation/campaignSchema";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User } from "@supabase/supabase-js";
 import createClient from "@/lib/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
@@ -20,16 +19,26 @@ import CampaignStepTwo from "./CampaignStepTwo";
 import CampaignStepThree from "./CampaignStepThree";
 import { Button } from "../ui/button";
 import LoadingModal from "./LoadingModal";
+import { useNgoUser } from "@/context/NgoUserContext";
+import { Loader2 } from "lucide-react";
 
 type ApiPayload = Omit<CampaignFormData, "photo"> & { image_url: string };
 
-export default function CreateCampaignForm({ user }: { user: User }) { 
+export default function CreateCampaignForm() { 
   const router = useRouter();
+  const { user } = useNgoUser();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabase = createClient();
 
-  // ✅ Use input schema for resolver
+  if (!user) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const form = useForm<CampaignFormInput>({
     resolver: zodResolver(campaignFormInputSchema),
     defaultValues: {
@@ -37,20 +46,18 @@ export default function CreateCampaignForm({ user }: { user: User }) {
       title: "",
       description: "",
       photo: undefined,
-      goal_amount: "", // string
+      goal_amount: "",
       end_date: "",
       milestones: ["", "", ""],
       background: "",
       problems: [""],
       solutions: [""],
-      contact_email: "",
-      contact_phone: "",
+      contact_email: user.email || "", 
       campaign_address: "",
       pic1: { name: "", contact: "" },
       pic2: { name: "", contact: "" },
     },
-    mode: "onChange",
-    reValidateMode: "onChange"
+    mode: "onBlur", 
   });
 
   async function onSubmit(rawData: CampaignFormInput) {
@@ -59,7 +66,6 @@ export default function CreateCampaignForm({ user }: { user: User }) {
     let publicUrl = "";
 
     try {
-      // ✅ Transform raw input into parsed data
       const data: CampaignFormData = campaignSchema.parse(rawData);
 
       const file = data.photo?.[0];
@@ -94,6 +100,7 @@ export default function CreateCampaignForm({ user }: { user: User }) {
       if (!response.ok) throw new Error(result.error || "Failed to create campaign.");
 
       toast.success("Campaign created successfully!");
+      router.refresh()
       router.push(`/ngo/dashboard`);
     } catch (error: any) {
       console.error("Submission failed:", error);

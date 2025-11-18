@@ -1,33 +1,47 @@
-//app/api/user/register/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { registerUser } from "@/lib/services/userService";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export async function POST(request: Request) {
+  try {
+    // 1. Parse the incoming JSON body
+    const body = await request.json();
+    
+    // 2. Extract the fields we need
+    // Note: We don't need to validate extensively here because:
+    // - The Frontend (Zod) already validated the format.
+    // - Supabase Auth already handled the initial user creation.
+    const { id, email, name, role, ssm_number } = body;
 
-//insert user passed from signupDonor/Ngo
+    if (!id || !email || !role) {
+      return NextResponse.json(
+        { error: "Missing required fields: id, email, or role." },
+        { status: 400 }
+      );
+    }
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  const { id, name, email, role, ssm_number } = body;
-
-  const { error } = await supabaseAdmin.from("users").upsert(
-    {
+    // 3. Call the Service Layer
+    // This function handles:
+    // - Inserting into public.users
+    // - Inserting into ngo_profiles OR donor_profiles
+    // - Creating the KMS Wallet
+    const result = await registerUser({
       id,
-      name,
       email,
+      name,
       role,
-      ssm_number: role === "ngo" ? ssm_number ?? null : null,
-    },
-    { onConflict: "id" }
-  );
+      ssm_number // This will be undefined for donors, which is fine
+    });
 
-  if (error) {
-    console.error("User insert error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // 4. Return Success
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error("Registration API Error:", error);
+    
+    // Return a clean error message to the frontend
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error during registration." }, 
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ success: true });
 }

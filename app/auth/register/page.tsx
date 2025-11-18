@@ -1,71 +1,30 @@
-//app/auth/register/page.tsx
-"use client";
-
+// app/auth/register/page.tsx
 import Image from "next/image";
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-
-import createClient from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-import RoleToggle from "@/components/RoleToggle";
-import GoogleLoginButton from "@/components/GoogleLoginButton";
-import ErrorMessage from "@/components/ErrorMessage";
-import AuthLink from "@/components/AuthLink";
-import DonorSignupForm from "@/components/DonorSignupForm";
-import NgoSignupForm from "@/components/NgoSignupForm";
+// Import the Client Component
+import RegisterContent, { RegisterSkeleton } from "@/components/register/RegisterContent";
 
 export default function SignUpPage() {
-  const [role, setRole] = useState<"donor" | "ngo">("donor");
-  const [error, setError] = useState<string | null>(null);
-
-    const searchParams = useSearchParams();
-    const next = searchParams.get("next");
-
-  const supabase = createClient();
-
   return (
     <div className="flex min-h-screen">
-      {/* Left hero image */}
-      <div className="hidden md:flex w-1/2 relative">
-        <Image src="/hero-image.jpg" alt="Hero" fill className="object-cover" />
+      {/* Left hero image - Static Server Content */}
+      <div className="hidden md:flex w-1/2 relative bg-black">
+        <Image 
+            src="/hero-image.jpg" 
+            alt="Join our Cause" 
+            fill 
+            className="object-cover opacity-90" 
+            priority 
+        />
       </div>
 
-      {/* Right signup form */}
+      {/* Right signup form - Dynamic Client Content */}
       <div className="flex flex-col justify-center items-center w-full md:w-1/2 p-8 bg-gray-50">
-        <Card className="w-full max-w-md p-8 min-h-[650px] flex flex-col justify-start">
-          <CardHeader>
-            <CardTitle className="text-center">Create Account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 flex flex-col justify-start">
-            {error && <ErrorMessage message={error} />}
-
-            <RoleToggle role={role} setRole={setRole} />
-
-            {role === "donor" && (
-              <GoogleLoginButton
-                supabase={supabase}
-                next={next}
-                setError={setError}
-              />
-            )}
-
-           {role === "donor" ? (
-                       <DonorSignupForm 
-                           supabase={supabase}
-                           setError={setError}
-                       />
-                       ) : (
-                       <NgoSignupForm 
-                           supabase={supabase} 
-                           setError={setError}
-                        />
-                       )}
-
-            <AuthLink mode="signup" />
-          </CardContent>
-        </Card>
+        {/* The Suspense boundary handles the initial loading state of the client component */}
+        <Suspense fallback={<RegisterSkeleton />}>
+            <RegisterContent />
+        </Suspense>
       </div>
     </div>
   );

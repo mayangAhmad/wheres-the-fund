@@ -12,10 +12,10 @@ import {
   IconCash,
 } from "@tabler/icons-react";
 
-import { NavDocuments } from "@/components/nav-documents";
-import { NavMain } from "@/components/nav-main";
+import { NavDocuments } from "@/components/ngo-dashboard/nav-documents";
+import { NavMain } from "@/components/ngo-dashboard/nav-main";
 import { Sidebar, SidebarContent, SidebarHeader } from "@/components/ui/sidebar";
-import { WalletDisplay } from "./WalletDisplay";
+import WalletDisplay from "./WalletDisplay";
 
 const navData = {
   navMain: [
@@ -35,7 +35,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: {
     name: string;
     email: string;
-    wallet: string;
+    wallet_address: string;
     campaigns?: unknown[];
   };
   onNavigate?: (view: string) => void;
@@ -56,7 +56,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           <div className="flex flex-col">
             <span className="font-semibold text-md text-gray-800">{user.name}</span>
             <span>
-              <WalletDisplay address={user.wallet} />
+              <WalletDisplay address={user.wallet_address} />
             </span>
           </div>
         </div>

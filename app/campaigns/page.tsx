@@ -1,11 +1,9 @@
-"use client";
+import CampaignPageContent from "@/components/campaigns/CampaignPageContent";
 
-import CampaignPage from "@/components/CampaignPage";
-
-export default function Campaigns(){
+export default function CampaignPage(){
     return (
     <main>
-        <CampaignPage />
+        <CampaignPageContent />
     </main>
 
     )

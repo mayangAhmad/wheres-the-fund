@@ -1,77 +1,35 @@
 // hooks/useCampaigns.ts
-import { useEffect, useState, useCallback } from 'react'
-import createClient from '../lib/supabase/client'
 
-export type Campaign = {
-  id: string
-  ngo_name: string | null
-  title: string
-  description: string | null
-  category: string | null
-  image_url: string | null
-  goal_amount: number
-  collected_amount: number
-  status: string | null
-  end_date: string | null
-  created_at: string | null
-}
+import { useContext, useMemo } from 'react'
+import { CampaignsContext, Campaign } from '@/context/CampaignsContext' // Adjust the import path
 
-export const useCampaigns = () => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+// The hook now accepts an optional filter string
+export const useCampaigns = (categoryFilter?: string) => {
+  const context = useContext(CampaignsContext)
 
-  // Wrap in useCallback to make it stable
-  const fetchCampaigns = useCallback(async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select('*')
-      .eq('status', 'Ongoing')
-      .order('created_at', { ascending: false })
+  if (context === undefined) {
+    throw new Error('useCampaigns must be used within a CampaignsProvider')
+  }
 
-    if (error) console.error('Fetch campaigns error:', error)
-    else setCampaigns(data || [])
-
-    setLoading(false)
-  }, [supabase]) // <-- supabase is stable if your createClient returns the same client instance
-
-  useEffect(() => {
-    fetchCampaigns()
-
-    const channel = supabase
-      .channel('public:campaigns')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'campaigns' },
-        (payload) => {
-          const newCampaign = payload.new as Campaign
-          const oldCampaign = payload.old as Campaign | null
-
-          switch (payload.eventType) {
-            case 'INSERT':
-              setCampaigns((prev) => [newCampaign, ...prev])
-              break
-            case 'UPDATE':
-              setCampaigns((prev) =>
-                prev.map((c) => (c.id === newCampaign.id ? newCampaign : c))
-              )
-              break
-            case 'DELETE':
-              if (oldCampaign)
-                setCampaigns((prev) =>
-                  prev.filter((c) => c.id !== oldCampaign.id)
-                )
-              break
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+  const { campaigns, loading, refetch } = context
+  
+  // 🌟 Best Practice: Use useMemo to filter the list only when 
+  // the global campaigns list or the category filter changes.
+  const filteredCampaigns = useMemo(() => {
+    if (!categoryFilter) {
+      return campaigns
     }
-  }, [fetchCampaigns, supabase]) // ✅ now dependencies are complete
+    
+    // Apply the local filter logic. 
+    // We trim and lowercase both values for a more robust match.
+    const normalizedFilter = categoryFilter.trim().toLowerCase()
 
-  return { campaigns, loading, refetch: fetchCampaigns }
+    return campaigns.filter(campaign => 
+      campaign.category?.trim().toLowerCase() === normalizedFilter
+    )
+    
+  }, [campaigns, categoryFilter])
+
+
+  return { campaigns: filteredCampaigns, loading, refetch }
 }

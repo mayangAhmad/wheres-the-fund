@@ -3,8 +3,10 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol"; // 1. Import Ownable
 
-contract CampaignFactory is EIP712 {
+// 2. Inherit from Ownable
+contract CampaignFactory is EIP712, Ownable {
     struct Campaign {
         uint256 id;
         address ngo;
@@ -33,7 +35,28 @@ contract CampaignFactory is EIP712 {
         uint256 createdAt
     );
 
-    constructor() EIP712("NGOPlatform", "1") {}
+    event DonationRecorded(uint256 indexed campaignId, uint256 amount, string paymentRef);
+
+    // 3. Update Constructor: Accept initialOwner and pass to Ownable
+    constructor(address initialOwner) 
+        EIP712("NGOPlatform", "1") 
+        Ownable(initialOwner) 
+    {}
+
+    // 4. Protect this function with 'onlyOwner'
+    // This ensures only your backend (the owner) can record fiat payments on-chain.
+    function recordFiatDonation(uint256 campaignId, uint256 amount, string calldata paymentRef) external onlyOwner {
+        Campaign storage campaign = campaigns[campaignId];
+        require(campaign.id != 0, "Campaign does not exist");
+        require(!campaign.closed, "Campaign is closed");
+        
+        // Optional: You can comment this out if you want to allow late donations
+        require(block.timestamp < campaign.deadline, "Campaign expired");
+
+        campaign.collectedAmount += amount;
+        
+        emit DonationRecorded(campaignId, amount, paymentRef);
+    }
 
     function createCampaignWithSignature(
         string memory title,

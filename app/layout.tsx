@@ -1,9 +1,15 @@
+// app/layout.tsx
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import Nav from "@/components/Navbar";
+import Nav from "@/components/navbar/Navbar";
+import Footer from "@/components/footer/Footer";
 
 import "./globals.css";
+
+// 🌟 Import the CampaignsProvider from the specified path
+import { CampaignsProvider } from "@/context/CampaignsContext"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,8 +36,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Nav />
-        <main className="">{children}</main>
+        {/* Wrap all interactive content with the Provider */}
+        <CampaignsProvider> 
+          <Nav />
+          <main className="">{children}</main>
+          <Footer />
+        </CampaignsProvider>
       </body>
     </html>
   );
