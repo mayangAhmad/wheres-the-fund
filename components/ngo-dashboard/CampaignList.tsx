@@ -17,7 +17,7 @@ export default function CampaignsList() {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">My Campaigns</h2>
         <Button asChild>
-          <Link href="/ngo/campaigns/new">
+          <Link href="/ngo/campaigns/create">
             <Plus className="mr-2 h-4 w-4" /> Create Campaign
           </Link>
         </Button>
