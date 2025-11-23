@@ -38,9 +38,7 @@ export default function RootLayout({
       >
         {/* Wrap all interactive content with the Provider */}
         <CampaignsProvider> 
-          <Nav />
-          <main className="">{children}</main>
-          <Footer />
+          <main>{children}</main>
         </CampaignsProvider>
       </body>
     </html>

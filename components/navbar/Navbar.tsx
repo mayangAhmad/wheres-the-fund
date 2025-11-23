@@ -102,8 +102,10 @@ const Logo = () => (
     <Image
       src="/wtf-logo.svg"
       alt="Your Logo"
-      width={128}
+      width={150}
       height={40}
+      className="w-32 h-auto"
+      loading="eager"
     />
   </Link>
 );

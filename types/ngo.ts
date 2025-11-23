@@ -1,51 +1,48 @@
 // types/ngo.ts
 
-export interface Campaign {
-  id: string; // uuid
-  ngo_id?: string | null; // uuid, FK to auth.users
-  ngo_name?: string | null; // text
-  title: string; // text, required
-  description?: string | null; // text
-  category?: string | null; // text
-  image_url?: string | null; // text
-  goal_amount?: number | null; // numeric
-  collected_amount?: number | null; // numeric, default 0
-  status?: string | null; // text, default 'Ongoing'
-  end_date?: string | null; // date (ISO string)
-  created_at?: string
-  on_chain_id?: number | null; // bigint
-  wallet_address?: string | null; // text
-  tx_hash?: string | null; // text
-  contract_address?: string | null; // text
-  milestones?: string[] | null; // text[]
-  problems?: string[] | null; // text[]
-  solutions?: string[] | null; // text[]
-  background?: string | null; // text
-  contact_email?: string | null; // text
-  contact_phone?: string | null; // text
-  campaign_address?: string | null; // text
-  pic1?: Record<string, any> | null; // jsonb
-  pic2?: Record<string, any> | null; // jsonb
+// 1. Define the Lightweight Summary (Matches your Dashboard Query)
+export interface CampaignSummary {
+  id: string;
+  title: string;
+  status: string | null;
+  collected_amount: number | null;
+  created_at: string;
+  tx_hash: string | null;
 }
 
-// The generic data (from public.users)
+// 2. Define the Full Details (Matches your Campaign Details Page)
+export interface Campaign extends CampaignSummary {
+  ngo_id: string | null;
+  ngo_name: string | null;
+  description: string | null;
+  category: string | null;
+  image_url: string | null;
+  goal_amount: number | null;
+  end_date: string | null;
+  on_chain_id: number | null;
+  wallet_address: string | null;
+  contract_address: string | null;
+  milestones: string[] | null;
+  problems: string[] | null;
+  solutions: string[] | null;
+  background: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  campaign_address: string | null;
+  pic1: Record<string, any> | null;
+  pic2: Record<string, any> | null;
+}
+
 export interface BaseUser {
   id: string;
   name: string;
   email: string;
   wallet_address: string;
   kms_key_id: string;
+  role: string;
 }
 
-// The final object delivered to the dashboard (combines shared and unique data)
 export interface NgoUser extends BaseUser {
-  // Unique NGO data from ngo_profiles
   ssm_number: string;
-  // Related data from campaigns table
-  campaigns: Campaign[]; 
+  campaigns: CampaignSummary[]; 
 }
-
-// You should also create a separate DonorUser interface for clarity
-// export interface DonorUser extends BaseUser {
-//     // Add donor_profiles fields here if needed
-// }

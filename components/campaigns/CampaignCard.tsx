@@ -3,8 +3,6 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-
-// Assuming Campaign type is available through your context/hooks path
 import { Campaign } from '@/context/CampaignsContext'; 
 
 interface CampaignCardProps {
@@ -47,7 +45,8 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
                     alt={campaign.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover"
+                    priority
                 />
                 
                 {/* Status Label - Top Right Corner */}
@@ -95,7 +94,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
 
                 {/* 4. Donate Button */}
                 <Link
-                    href={`/campaign/${campaign.id}`}
+                    href={`/campaigns/${campaign.id}`}
                     className="mt-4 block w-full text-center bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold py-2 rounded transition-all"
                 >
                     Donate Now

@@ -47,10 +47,9 @@ export default function WalletDisplay({ address }: WalletDisplayProps) {
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-md border bg-background/50 px-3 py-1.5 backdrop-blur-sm">
+    <div className="flex items-center gap-2 py-1.5 backdrop-blur-sm">
       <div className="flex items-center gap-2">
-        <div className={`h-2 w-2 rounded-full ${address ? "bg-green-500" : "bg-gray-300"}`} />
-        <span className="font-mono text-sm font-medium text-foreground">
+        <div className={`h-2 w-2 rounded-full ${address ? "bg-green-500" : "bg-gray-300 pointer-events-none"}`} />        <span className="font-mono text-sm font-medium text-foreground">
           {truncateMiddle(address)}
         </span>
       </div>

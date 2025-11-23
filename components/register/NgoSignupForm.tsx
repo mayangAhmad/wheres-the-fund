@@ -1,37 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NgoSignupFormValues, ngoSignupSchema } from "@/lib/validation/ngoSignupSchema";
+import { registerNgoAction } from "@/app/actions/auth"; // Your Server Action
 
-interface Props {
-  supabase: SupabaseClient;
-  setError: (msg: string | null) => void;
-  setIsLoading: (loading: boolean) => void;
-  isLoading: boolean; // ✅ Added this
-}
-
-export default function NgoSignupForm({ 
-  supabase, 
-  setError, 
-  setIsLoading,
-  isLoading // ✅ Destructured this
-}: Props) {
-  const router = useRouter();
+export default function NgoSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
 
+  // 1. Hook up the Server Action
+  const [state, formAction, isPending] = useActionState(registerNgoAction, undefined);
+
+  // 2. Keep React Hook Form for CLIENT-SIDE UI validation only
   const {
     register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<NgoSignupFormValues>({
     resolver: zodResolver(ngoSignupSchema),
     mode: "onBlur",
@@ -44,74 +33,18 @@ export default function NgoSignupForm({
     }
   });
 
-  const onSubmit = async (formData: NgoSignupFormValues) => {
-    setError(null);
-    setIsLoading(true); // ✅ START LOADING
-
-    try {
-      // 1. Verify SSM
-      const verifyRes = await fetch("/api/user/ssm", {
-        method: "POST",
-        body: JSON.stringify({ ssmNumber: formData.ssmNumber }),
-      });
-      
-      const verifyData = await verifyRes.json();
-
-      if (!verifyRes.ok || !verifyData.valid) {
-        throw new Error(verifyData.message || "Invalid SSM Number");
-      }
-
-      // 2. Sign up in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: { 
-            name: formData.orgName, 
-            role: "ngo",
-            ssm_number: formData.ssmNumber
-          },
-        },
-      });
-
-      if (error) throw error;
-      if (!data.user?.id) throw new Error("User creation failed");
-
-      // 3. Handle DB Registration
-      const registerRes = await fetch("/api/user/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: data.user.id,
-          name: formData.orgName,
-          email: formData.email,
-          role: "ngo",
-          ssm_number: formData.ssmNumber,
-        }),
-      });
-
-      if (!registerRes.ok) {
-        const resJson = await registerRes.json();
-        throw new Error(resJson.error || "Database registration failed");
-      }
-
-      // 4. Setup Wallet
-      await fetch("/api/user/setup-wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: data.user.id }),
-      });
-
-      // Success: Keep isLoading(true) while redirecting
-      router.push("/auth/login");
-    } catch (err: any) {
-      setIsLoading(false); // ✅ STOP LOADING ONLY ON ERROR
-      setError(err.message || "An unexpected error occurred");
-    }
-  };
+  // Note: 'onSubmit' is removed. The 'action' prop handles submission.
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form action={formAction} className="space-y-4">
+      
+      {/* 3. Display Server-Side Errors (e.g. "User already exists") */}
+      {state?.error && (
+        <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
+          {state.error}
+        </div>
+      )}
+
       {/* ORGANIZATION NAME */}
       <div className="space-y-2">
         <Label htmlFor="orgName">Organization Name</Label>
@@ -119,6 +52,7 @@ export default function NgoSignupForm({
           id="orgName"
           placeholder="Helping Hands Foundation"
           {...register("orgName")}
+          name="orgName" // ✅ REQUIRED for Server Action
           className={errors.orgName ? "border-red-500" : ""}
         />
         {errors.orgName && (
@@ -133,6 +67,7 @@ export default function NgoSignupForm({
           id="ssmNumber"
           placeholder="e.g. 202301000000"
           {...register("ssmNumber")}
+          name="ssmNumber" // ✅ REQUIRED for Server Action
           className={errors.ssmNumber ? "border-red-500" : ""}
         />
         {errors.ssmNumber && (
@@ -148,6 +83,7 @@ export default function NgoSignupForm({
           type="email"
           placeholder="ngo@example.com"
           {...register("email")}
+          name="email" // ✅ REQUIRED for Server Action
           className={errors.email ? "border-red-500" : ""}
         />
         {errors.email && (
@@ -164,12 +100,13 @@ export default function NgoSignupForm({
             type={showPassword ? "text" : "password"}
             placeholder="********"
             {...register("password")}
+            name="password" // ✅ REQUIRED for Server Action
             className={errors.password ? "border-red-500" : ""}
           />
           <button
-            type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 transition-colors"
+            type="button"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -187,6 +124,7 @@ export default function NgoSignupForm({
           type="password"
           placeholder="********"
           {...register("confirmPassword")}
+          name="confirmPassword" // ✅ REQUIRED for Server Action
           className={errors.confirmPassword ? "border-red-500" : ""}
         />
         {errors.confirmPassword && (
@@ -197,9 +135,9 @@ export default function NgoSignupForm({
       <Button 
         type="submit" 
         className="w-full mt-4" 
-        disabled={isSubmitting || isLoading} // ✅ Updated Logic
+        disabled={isPending} // ✅ Use Hook's pending state
       >
-        {isSubmitting || isLoading ? (
+        {isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Verifying & Registering...

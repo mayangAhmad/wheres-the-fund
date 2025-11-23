@@ -119,13 +119,23 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  /* --- SIDEBAR BACKGROUND (Deep Navy) --- */
+  /* L=0.25 (Dark), C=0.05 (Subtle Blue), H=245 (Navy Hue) */
+  --sidebar: oklch(42.266% 0.02641 240.114);
+  
+  --sidebar-foreground: oklch(0.985 0 0); /* White Text */
+
+  /* --- ACTIVE TAB (Brighter Navy) --- */
+  /* Slightly lighter and more blue so you see which tab is active */
+  --sidebar-primary: oklch(0.45 0.15 245); /* medium navy */
+--sidebar-accent: oklch(0.55 0.20 245);  /* lighter hover navy */
+--sidebar-primary-foreground: oklch(1 0 0); /* white text */
+--sidebar-accent-foreground: oklch(1 0 0);  /* white text */
+
+
+
+  /* Borders */
+  --sidebar-border: oklch(0.35 0.05 245);
   --sidebar-ring: oklch(0.556 0 0);
 }
 

@@ -1,16 +1,20 @@
-"use client"; // 👈 This marks it as a Client Component
+"use client";
 
-import { useNgoUser } from "@/context/NgoUserContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { CampaignSummary } from "@/types/ngo"; // Use the type we defined earlier
 
-export default function CampaignsList() {
-  // Now safe to use the hook because we are in a Client Component
-  const { user } = useNgoUser();
-  const campaigns = user.campaigns || [];
+// 1. Define Props
+interface CampaignsListProps {
+  campaigns: CampaignSummary[];
+}
+
+// 2. Accept Props
+export default function CampaignsList({ campaigns }: CampaignsListProps) {
+  // We removed useNgoUser() because we get data from props now!
 
   return (
     <div className="space-y-6">
@@ -34,9 +38,9 @@ export default function CampaignsList() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {campaigns.map((campaign) => (
-            <Card key={campaign.id}>
+            <Card key={campaign.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium line-clamp-1" title={campaign.title}>
                   {campaign.title}
                 </CardTitle>
                 <Badge variant={campaign.status === 'Ongoing' ? 'default' : 'secondary'}>
@@ -50,6 +54,12 @@ export default function CampaignsList() {
                 <p className="text-xs text-muted-foreground">
                   Created on {new Date(campaign.created_at).toLocaleDateString()}
                 </p>
+                {/* Optional: Add TX Hash link if available */}
+                {campaign.tx_hash && (
+                    <div className="mt-2 text-xs text-blue-600 truncate">
+                        TX: {campaign.tx_hash.slice(0, 10)}...
+                    </div>
+                )}
               </CardContent>
             </Card>
           ))}

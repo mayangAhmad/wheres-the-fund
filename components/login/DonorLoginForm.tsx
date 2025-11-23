@@ -1,80 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SupabaseClient } from "@supabase/supabase-js";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoginFormValues, loginSchema } from "@/lib/validation/userLoginSchema";
+import { loginDonorAction } from "@/app/actions/auth"; // Import Action
 
-interface Props {
-  supabase: SupabaseClient;
-  next: string | null;
-  setError: (msg: string | null) => void;
-  setIsLoading: (loading: boolean) => void; // 1. Add type
-  isLoading: boolean;                       // 2. Add type
-}
-
-export default function DonorLoginForm({ 
-  supabase, 
-  next, 
-  setError, 
-  setIsLoading, 
-  isLoading 
-}: Props) { // 3. Destructure
-  const router = useRouter();
+export default function DonorLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Hook up Server Action
+  const [state, formAction, isPending] = useActionState(loginDonorAction, undefined);
 
   const {
     register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    mode: "onBlur",
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = async (formData: LoginFormValues) => {
-    setError(null);
-    setIsLoading(true); // 4. Start Overlay
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) throw error;
-
-      const userRole = data.user?.user_metadata?.role || "donor";
-      
-      let dashboardPath = "/donor/dashboard";
-      if (userRole === "ngo") {
-        dashboardPath = "/ngo/dashboard";
-      }
-
-      router.refresh(); 
-      router.push(next || dashboardPath);
-      
-      // 5. Success: Do NOT set loading false. Keep overlay until redirect completes.
-      
-    } catch (err: any) {
-      setIsLoading(false); // 6. Error: Stop overlay so user can retry
-      setError(err.message || "An unexpected error occurred.");
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form action={formAction} className="space-y-4">
+      
+      {state?.error && (
+        <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
+          {state.error}
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -82,6 +41,7 @@ export default function DonorLoginForm({
           type="email"
           placeholder="you@example.com"
           {...register("email")}
+          name="email" // Required
           className={errors.email ? "border-red-500" : ""}
         />
         {errors.email && (
@@ -97,12 +57,13 @@ export default function DonorLoginForm({
             type={showPassword ? "text" : "password"}
             placeholder="********"
             {...register("password")}
+            name="password" // Required
             className={errors.password ? "border-red-500" : ""}
           />
           <button
-            type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+            type="button"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -115,9 +76,9 @@ export default function DonorLoginForm({
       <Button 
         type="submit" 
         className="w-full mt-2" 
-        disabled={isSubmitting || isLoading} // 7. Disable on global load
+        disabled={isPending}
       >
-        {isSubmitting || isLoading ? (
+        {isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Signing in...

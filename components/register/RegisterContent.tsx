@@ -78,19 +78,9 @@ export default function RegisterContent() {
           )}
 
           {role === "donor" ? (
-            <DonorSignupForm 
-              supabase={supabase}
-              setError={setError}
-              setIsLoading={setIsLoading}
-              isLoading={isLoading}
-            />
+            <DonorSignupForm />
           ) : (
-            <NgoSignupForm 
-              supabase={supabase} 
-              setError={setError}
-              setIsLoading={setIsLoading}
-              isLoading={isLoading}
-            />
+            <NgoSignupForm />
           )}
         </CardContent>
 

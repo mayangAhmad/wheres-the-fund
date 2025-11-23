@@ -6,12 +6,6 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import { useDebounce } from 'use-debounce' 
-
-// 🌟 Import the new filtering hook (Used internally to define filteredCampaigns, 
-// but we only need the input values for the Grid component in this file)
-import { useFilteredCampaigns } from '@/hooks/useFilteredCampaigns' 
-
-// Import your optimized grid (Now expects filter props)
 import CampaignGrid from '@/components/campaigns/CampaignGrid'
 
 // ----------------------------------------------------------------------
@@ -106,9 +100,7 @@ export default function CampaignPageContent() {
   const [filterStatus, setFilterStatus] = useState('All Status')
   const [filterCategoryDisplay, setFilterCategoryDisplay] = useState('All Campaigns')
   const [inputText, setInputText] = useState('')
-  
-  // Debounced search term
-  const [debouncedSearchTerm] = useDebounce(inputText, 300)
+    const [debouncedSearchTerm] = useDebounce(inputText, 300)
 
   // Mapped category value for the hook
   const filterCategorySupabase = useMemo(() => {
@@ -118,9 +110,6 @@ export default function CampaignPageContent() {
   // Dropdown Options
   const statusOptions = ['All Status', 'Ongoing', 'Completed']
   const categoryOptions = ['All Campaigns', 'Standard', 'Disaster-Relief']
-
-  // ❌ DELETED: Removed this unnecessary hook call, as the Grid handles it internally now.
-  // const { filteredCampaigns, loading } = useFilteredCampaigns({ ... }); 
 
 
   return (
@@ -191,15 +180,14 @@ export default function CampaignPageContent() {
       </div>
 
       {/* CAMPAIGNS GRID */}
-      <div className="max-w-[90rem] mx-auto px-6 md:px-16 lg:px-20 mt-10">
+      <div className="w-full px-6 md:px-16 lg:px-20">
         <CampaignGrid
-          filterStatus={filterStatus}          // ✅ Passing raw filter status
-          filterCategory={filterCategorySupabase} // ✅ Passing mapped filter category
-          searchTerm={debouncedSearchTerm}       // ✅ Passing debounced search term
-          // ❌ DELETED: campaigns={filteredCampaigns}
-          // ❌ DELETED: loading={loading}
+          filterStatus={filterStatus}    
+          filterCategory={filterCategorySupabase} 
+          searchTerm={debouncedSearchTerm}       
         />
       </div>
+
     </main>
   )
 }

@@ -1,37 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DonorSignupFormValues, donorSignupSchema } from "@/lib/validation/donorSignupSchema";
+import { registerDonorAction } from "@/app/actions/auth"; // Import Action
 
-interface Props {
-  supabase: SupabaseClient;
-  setError: (msg: string | null) => void;
-  setIsLoading: (loading: boolean) => void;
-  isLoading: boolean; // ✅ Added this
-}
-
-export default function DonorSignupForm({ 
-  supabase, 
-  setError, 
-  setIsLoading, 
-  isLoading // ✅ Destructured this
-}: Props) {
-  const router = useRouter();
+export default function DonorSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Hook up Server Action
+  const [state, formAction, isPending] = useActionState(registerDonorAction, undefined);
 
   const {
     register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<DonorSignupFormValues>({
     resolver: zodResolver(donorSignupSchema),
     mode: "onBlur",
@@ -43,51 +31,15 @@ export default function DonorSignupForm({
     }
   });
 
-  const onSubmit = async (formData: DonorSignupFormValues) => {
-    setError(null);
-    setIsLoading(true); // ✅ START LOADING
-
-    try {
-      // Step 1: Sign up in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: { name: formData.name, role: "donor" },
-        },
-      });
-
-      if (error) throw error;
-      if (!data.user?.id) throw new Error("User creation failed");
-
-      // Step 2: Handle DB Registration
-      const registerRes = await fetch("/api/user/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: data.user.id,
-          name: formData.name,
-          email: formData.email,
-          role: "donor",
-        }),
-      });
-
-      if (!registerRes.ok) {
-        const resJson = await registerRes.json();
-        throw new Error(resJson.error || "Database registration failed");
-      }
-
-
-      // Success: Keep isLoading(true) while redirecting
-      router.push("/auth/login");
-    } catch (err: any) {
-      setIsLoading(false); // ✅ STOP LOADING ONLY ON ERROR
-      setError(err.message || "An unexpected error occurred");
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form action={formAction} className="space-y-4">
+      
+      {state?.error && (
+        <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
+          {state.error}
+        </div>
+      )}
+
       {/* NAME */}
       <div className="space-y-2">
         <Label htmlFor="name">Your Name</Label>
@@ -95,6 +47,7 @@ export default function DonorSignupForm({
           id="name"
           placeholder="John Doe"
           {...register("name")}
+          name="name" // Required
           className={errors.name ? "border-red-500" : ""}
         />
         {errors.name && (
@@ -110,6 +63,7 @@ export default function DonorSignupForm({
           type="email"
           placeholder="you@example.com"
           {...register("email")}
+          name="email" // Required
           className={errors.email ? "border-red-500" : ""}
         />
         {errors.email && (
@@ -126,12 +80,13 @@ export default function DonorSignupForm({
             type={showPassword ? "text" : "password"}
             placeholder="********"
             {...register("password")}
+            name="password" // Required
             className={errors.password ? "border-red-500" : ""}
           />
           <button
-            type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 transition-colors"
+            className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+            type="button"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -149,6 +104,7 @@ export default function DonorSignupForm({
           type="password"
           placeholder="********"
           {...register("confirmPassword")}
+          name="confirmPassword" // Required
           className={errors.confirmPassword ? "border-red-500" : ""}
         />
         {errors.confirmPassword && (
@@ -159,9 +115,9 @@ export default function DonorSignupForm({
       <Button 
         type="submit" 
         className="w-full mt-4" 
-        disabled={isSubmitting || isLoading} // ✅ Updated Logic
+        disabled={isPending}
       >
-        {isSubmitting || isLoading ? (
+        {isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Creating Account...

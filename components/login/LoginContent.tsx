@@ -1,3 +1,4 @@
+//components/login/LoginContent.tsx
 "use client";
 
 import { useState } from "react";
@@ -25,7 +26,7 @@ export default function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); // 1. Central Loading State
   
-  const next = searchParams.get("next") || "/dashboard";
+  const next = searchParams.get("next") || (initialRole === "ngo" ? "/ngo/dashboard" : "/donor/dashboard");
   const supabase = createClient();
 
   return (
@@ -76,21 +77,9 @@ export default function LoginContent() {
 
           {/* Pass loading props to forms */}
           {role === "donor" ? (
-            <DonorLoginForm 
-              supabase={supabase}
-              next={next}
-              setError={setError}
-              setIsLoading={setIsLoading}
-              isLoading={isLoading}
-            />
+            <DonorLoginForm />
           ) : (
-            <NgoLoginForm 
-              supabase={supabase} 
-              next={next} 
-              setError={setError}
-              setIsLoading={setIsLoading}
-              isLoading={isLoading}
-            />
+            <NgoLoginForm />
           )}
         </CardContent>
 
