@@ -1,5 +1,5 @@
 import { User, Tag, HeartHandshake } from "lucide-react";
-import { AmountProgress } from "./AmountProgress";
+import { AmountProgress } from "../AmountProgress";
 import Image from "next/image";
 
 interface HeaderProps {
@@ -30,7 +30,7 @@ export default function CampaignHeader({ data, onDonate }: HeaderProps) {
   return (
     <div className="flex flex-col md:flex-row gap-6 mb-12 w-full">
       {/* Left: Image */}
-      <div className="w-full md:w-5/12 h-[250px] md:h-[40vh] flex-shrink-0">
+      <div className="w-full md:w-5/12 h-[250px] md:h-[40vh] shrink-0">
         <div className="relative w-full h-full overflow-hidden rounded-md shadow-lg group">
           <Image
             src={data.image || "/placeholder.jpg"}

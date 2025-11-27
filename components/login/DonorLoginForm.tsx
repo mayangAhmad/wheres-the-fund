@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoginFormValues, loginSchema } from "@/lib/validation/userLoginSchema";
 import { loginDonorAction } from "@/app/actions/auth"; // Import Action
+import SubmitButton from "../auth/SubmitButton";
 
 export default function DonorLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -73,20 +74,13 @@ export default function DonorLoginForm() {
         )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full mt-2" 
-        disabled={isPending}
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Signing in...
-          </>
-        ) : (
-          "Sign In"
-        )}
-      </Button>
+      <SubmitButton 
+          isLoading={isPending} 
+          loadingText="Signing in..."
+          className="mt-8" 
+        >
+            Sign In
+        </SubmitButton>
     </form>
   );
 }

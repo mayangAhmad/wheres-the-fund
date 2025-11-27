@@ -1,27 +1,10 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import createClient from "@/lib/supabase/client";
-
-import { Button } from "@/components/ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from "@/components/ui/navigation-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-
 import AuthButton from "../auth/auth-button";
 
 interface MenuItem {
@@ -31,6 +14,7 @@ interface MenuItem {
 
 export default function Nav() {
   const [dashboardUrl, setDashboardUrl] = useState("/");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -39,9 +23,28 @@ export default function Nav() {
       const role = user?.user_metadata?.role || "donor";
       setDashboardUrl(role === "ngo" ? "/ngo/dashboard" : "/donor/dashboard");
     };
-
     fetchUserRole();
   }, []);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsMobileMenuOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
+    } else {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileMenuOpen, handleKeyDown]);
 
   const NAV_MENU_ITEMS: MenuItem[] = [
     { title: "Home", url: "/" },
@@ -50,49 +53,102 @@ export default function Nav() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 p-4 border-b bg-background">
-      <div className="container mx-auto">
-        {/* Desktop Menu */}
-        <nav className="hidden justify-between lg:flex">
-          <div className="flex items-center gap-6">
-            <Logo />
-            <div className="flex items-center">
-              <NavigationMenu>
-                <NavigationMenuList>
-                  {NAV_MENU_ITEMS.map((item) => renderMenuItem(item))}
-                </NavigationMenuList>
-              </NavigationMenu>
-            </div>
-          </div>
+    <header className="sticky top-0 z-50 w-full border-b bg-background">
+      {/* Added 'relative' here so the absolute positioning of the nav works relative to this container */}
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
+        
+        {/* 1. LEFT: Logo */}
+        <Logo />
 
-          <AuthButton />
+        {/* 2. CENTER: Desktop Nav */}
+        {/* moved out of the left group and positioned absolutely in the center */}
+        <nav className="hidden lg:flex items-center gap-6 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          {NAV_MENU_ITEMS.map((item) => (
+            <Link
+              key={item.title}
+              href={item.url}
+              className="tracking-widest group px-4 py-2 text-md text-blue-950 transition-colors hover:text-orange-500"
+            >
+              <span className="relative">
+                {item.title}
+                <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-orange-500 transition-all duration-300 ease-out group-hover:w-full" />
+              </span>
+            </Link>
+          ))}
         </nav>
 
-        {/* Mobile Menu */}
-        <div className="block lg:hidden">
-          <div className="flex items-center justify-between">
-            <Logo />
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="size-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>
-                    <Logo />
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col gap-6 p-4">
-                  {NAV_MENU_ITEMS.map((item) => renderMobileMenuItem(item))}
-                  <AuthButton />
-                </div>
-              </SheetContent>
-            </Sheet>
+        {/* 3. RIGHT: Auth & Mobile Trigger */}
+        <div className="flex items-center gap-4">
+          
+          {/* Desktop Auth */}
+          <div className="hidden lg:block">
+            <AuthButton />
           </div>
+
+          {/* Mobile Hamburger Trigger */}
+          <button
+            className="lg:hidden p-2 rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-menu"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile Drawer */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-50 lg:hidden" 
+          role="dialog" 
+          aria-modal="true" 
+          id="mobile-menu"
+        >
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 transition-opacity backdrop-blur-sm" 
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true" 
+          />
+
+          {/* Drawer Panel */}
+          <div className="fixed inset-y-0 right-0 w-[75%] max-w-sm bg-background shadow-xl border-l p-6 animate-in slide-in-from-right duration-200">
+            <div className="flex flex-col h-full gap-6"> 
+              
+              <div className="flex items-center justify-between">
+                <Logo />
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <nav className="flex flex-col gap-4">
+                {NAV_MENU_ITEMS.map((item) => (
+                  <Link
+                    key={item.title}
+                    href={item.url}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-lg font-semibold py-2 border-b border-border hover:text-primary transition-colors"
+                  >
+                    {item.title}
+                  </Link>
+                ))}
+              </nav>
+
+              <div onClick={() => setIsMobileMenuOpen(false)}>
+                <AuthButton className="w-full justify-center" /> 
+              </div>
+              
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -101,28 +157,11 @@ const Logo = () => (
   <Link href="/" className="flex items-center gap-2">
     <Image
       src="/wtf-logo.svg"
-      alt="Your Logo"
+      alt="WheresTheFund Logo"
       width={150}
       height={40}
       className="w-32 h-auto"
-      loading="eager"
+      priority
     />
-  </Link>
-);
-
-const renderMenuItem = (item: MenuItem) => (
-  <NavigationMenuItem key={item.title}>
-    <NavigationMenuLink
-      href={item.url}
-      className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-accent-foreground"
-    >
-      {item.title}
-    </NavigationMenuLink>
-  </NavigationMenuItem>
-);
-
-const renderMobileMenuItem = (item: MenuItem) => (
-  <Link key={item.title} href={item.url} className="text-md font-semibold">
-    {item.title}
   </Link>
 );

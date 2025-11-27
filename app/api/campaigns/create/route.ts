@@ -60,14 +60,12 @@ export async function POST(req: Request) {
     const { wallet_address, kms_key_id, name: ngoName } = userProfile;
 
     // 3. Verify KMS ownership (Security)
-    // Uses createKmsSigner from lib/kms-service.ts
     const signer = createKmsSigner(kms_key_id); 
     const signerAddress = (await signer.getAddress()).toLowerCase();
     
     if (signerAddress !== wallet_address.toLowerCase()) {
       throw new Error("Security Mismatch: KMS key does not match stored wallet address");
     }
-
 
     const endDateStr = body.end_date instanceof Date 
       ? body.end_date.toISOString().split("T")[0] 
@@ -77,8 +75,11 @@ export async function POST(req: Request) {
     dateObj.setHours(23, 59, 59, 999); 
     const deadlineTimestamp = Math.floor(dateObj.getTime() / 1000);
 
-    const targetAmountInt = BigInt(Math.floor(Number(body.goal_amount)));
+    // Calculate amounts
+    const goalAmountNum = Number(body.goal_amount); // Need standard number for DB math
+    const targetAmountInt = BigInt(Math.floor(goalAmountNum)); // Need BigInt for Blockchain
 
+    // 5. Insert Campaign Draft (Removed 'milestones' array, added 'current_milestone_index')
     const { data: draftCampaign, error: insertError } = await supabaseAdmin
       .from("campaigns")
       .insert({
@@ -91,7 +92,8 @@ export async function POST(req: Request) {
         image_url: body.image_url,
         goal_amount: body.goal_amount.toString(),
         end_date: endDateStr,
-        milestones: body.milestones,
+        // milestones: body.milestones, <--- REMOVED THIS
+        current_milestone_index: 0, // <--- ADDED THIS (Initialize state)
         background: body.background,
         problems: body.problems,
         solutions: body.solutions,
@@ -100,13 +102,35 @@ export async function POST(req: Request) {
         campaign_address: body.campaign_address,
         pic1: body.pic1,
         pic2: body.pic2,
-        status: "Creating", // Pending flag
+        status: "Creating", 
       })
       .select("id")
       .single();
 
     if (insertError || !draftCampaign) throw new Error(`DB Draft Failed: ${insertError?.message}`);
     campaignDbId = draftCampaign.id;
+
+    // ------------------------------------------------------------------
+    // NEW: Insert Rows into 'milestones' Table (20/40/40 Logic)
+    // ------------------------------------------------------------------
+    const percentages = [20, 40, 40];
+    const milestoneRecords = percentages.map((pct, index) => ({
+        campaign_id: campaignDbId,
+        milestone_index: index,
+        title: body.milestones[index]?.title || `Phase ${index + 1}`,
+        description: body.milestones[index]?.description || "Milestone description pending...",
+        funds_allocated_percent: pct,
+        target_amount: goalAmountNum * (pct / 100),
+        status: index === 0 ? 'active' : 'locked' // First one is active
+    }));
+
+    const { error: msError } = await supabaseAdmin
+      .from('milestones')
+      .insert(milestoneRecords);
+
+    if (msError) throw new Error(`Milestone Insert Failed: ${msError.message}`);
+    // ------------------------------------------------------------------
+
 
     // 6. Execute Chain Transaction
     const campaignFactory = new Contract(CONTRACT_ADDRESS, CampaignFactoryABI, signer);

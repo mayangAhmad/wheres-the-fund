@@ -3,13 +3,14 @@
 import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoginFormValues, loginSchema } from "@/lib/validation/userLoginSchema";
 import { loginNgoAction } from "@/app/actions/auth"; // Your Server Action
+import SubmitButton from "../auth/SubmitButton";
 
 export default function NgoLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -79,20 +80,13 @@ export default function NgoLoginForm() {
         )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full mt-2" 
-        disabled={isPending} // 4. Use the hook's pending state
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Signing in...
-          </>
-        ) : (
-          "Sign In as NGO"
-        )}
-      </Button>
+        <SubmitButton 
+            isLoading={isPending} 
+            loadingText="Signing in..."
+            className="mt-8" 
+          >
+            Sign In as NGO
+          </SubmitButton>
     </form>
   );
 }

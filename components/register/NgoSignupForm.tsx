@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NgoSignupFormValues, ngoSignupSchema } from "@/lib/validation/ngoSignupSchema";
 import { registerNgoAction } from "@/app/actions/auth"; // Your Server Action
+import SubmitButton from "../auth/SubmitButton";
 
 export default function NgoSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -132,20 +133,13 @@ export default function NgoSignupForm() {
         )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full mt-4" 
-        disabled={isPending} // ✅ Use Hook's pending state
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Verifying & Registering...
-          </>
-        ) : (
-          "Register NGO"
-        )}
-      </Button>
+      <SubmitButton 
+                isLoading={isPending} 
+                loadingText="Signing in..."
+                className="mt-8" 
+              >
+                  Sign Up
+              </SubmitButton>
     </form>
   );
 }
