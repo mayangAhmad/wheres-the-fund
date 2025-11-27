@@ -27,7 +27,6 @@ export default function DashboardLayoutWrapper({ children }: { children: React.R
       <NgoSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
 
       {/* 2. Main Content */}
-      {/* Dynamic padding-left based on state */}
       <main 
         className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out
           ${isCollapsed ? "pl-20" : "pl-64"} 

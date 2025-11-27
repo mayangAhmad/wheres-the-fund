@@ -12,11 +12,25 @@ const picSchema = z.object({
 
 });
 
-// --- Input schema (raw form values) ---
+export const categoryEnum = z.enum([
+  "Disaster Relief",
+  "Education",
+  "Hunger",
+  "Medical", 
+  "Community"
+]);
+
+// Define the shape of a single milestone
+const milestoneSchema = z.object({
+  title: z.string().min(3, "Title is too short"),
+  description: z.string().min(10, "Please provide a brief description of this stage"),
+});
+
 export const campaignFormInputSchema = z.object({
   title: z.string().min(5, { message: "Campaign title must be at least 5 characters." }).max(100),
   description: z.string().min(20, { message: "Description must be at least 20 characters." }).max(1000,  { message: "Background cannot exceed 1000 characters." }),
-  category: z.enum(["disaster", "standard"]),
+  category: categoryEnum,
+  milestones: z.array(milestoneSchema).min(1, "At least one milestone is required"),
 
   photo: z
     .any()
@@ -30,7 +44,6 @@ export const campaignFormInputSchema = z.object({
   goal_amount: z.string().min(1, "Target amount is required."),
   end_date: z.string().nonempty("Deadline is required"),
 
-  milestones: z.array(z.string().max(250)),
   background: z.string().min(20, { message: "Background must be at least 20 characters." }).max(1000, { message: "Description cannot exceed 1000 characters." }),
   problems: z.array(z.string().min(5, { message: "Problems cannot be empty." })).min(1, { message: "At least one problem is required." }),
   solutions: z.array(z.string().min(5, { message: "Solutions cannot be empty." })).min(1, { message: "At least one solution is required." }),
@@ -46,26 +59,7 @@ export const campaignFormInputSchema = z.object({
   pic1: picSchema,
   pic2: picSchema,
 }).superRefine((data, ctx) => {
-  const trimmed = data.milestones.map((m) => m.trim());
-  const requiredCount = data.category === "standard" ? 3 : 1;
 
-  for (let i = 0; i < requiredCount; i++) {
-    if (trimmed[i]?.length < 3) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Milestone ${i + 1} must be at least 3 characters.`,
-        path: ["milestones", i],
-      });
-    }
-  }
-
-  if (data.category === "disaster" && trimmed.slice(1).some((m) => m.length > 0)) {
-    ctx.addIssue({
-      code: "custom",
-      message: "Disaster campaigns only require the first milestone.",
-      path: ["milestones"],
-    });
-  }
 
   const num = Number(data.goal_amount);
   if (isNaN(num) || num <= 0) {

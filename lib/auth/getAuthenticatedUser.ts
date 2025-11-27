@@ -7,3 +7,9 @@ export async function getAuthenticatedUser() {
   if (error || !user) throw new Error("Unauthorized");
   return user;
 }
+
+export async function getSupabase() {
+const supabase = await createClient();
+return supabase;
+}
+

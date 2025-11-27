@@ -5,9 +5,9 @@ import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useNgoUser } from "@/context/NgoUserContext";
-import { DashboardSummaryCards } from "@/components/ngo-dashboard/DashboardSummaryCards";
+import { DashboardSummaryCards } from "@/components/ngo-dashboard/home/DashboardSummaryCards";
 import WalletDisplay from "./WalletDisplay";
-import StripeConnectButton from "./StripeConnectButton";
+import StripeConnectButton from "@/components/ngo-dashboard/StripeConnectButton";
 
 // Define the shape of the stats
 interface DashboardProps {
@@ -19,7 +19,7 @@ interface DashboardProps {
   }
 }
 
-export default function DashboardContent({ initialStats }: DashboardProps) {
+export default function HomeDashboardContent({ initialStats }: DashboardProps) {
   const { user } = useNgoUser(); // Still use this for Name/Wallet
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function DashboardContent({ initialStats }: DashboardProps) {
   const hasStripeAccount = !!user.stripe_account_id;
 
   return (
-    <main className="space-y-6 w-full max-w-[88rem] mx-auto">
+    <main className="space-y-6 w-full max-w-352 mx-auto">
       <header className="p-6 ml-6 mr-6 bg-white border border-gray-100 shadow-sm rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">

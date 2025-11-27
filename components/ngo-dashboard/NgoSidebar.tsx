@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useNgoUser } from "@/context/NgoUserContext";
 import { Home, Heart, Bell, Settings, PlusCircle, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 
-// Define the Props this component now needs
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
@@ -23,8 +22,8 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
   const pathname = usePathname();
   const { user } = useNgoUser();
 
-  // Dynamic Width Class
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
+  const profileImage = user?.avatar_url || "/placeholder.jpg"; 
 
   return (
     <aside 
@@ -33,15 +32,20 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
       
       {/* 1. Header / Logo */}
       <div className={`p-6 border-b border-white/10 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} h-[88px]`}>
+        
+        {/* Profile Image Container */}
+        <Link href="/ngo/settings">
         <div className="relative h-10 w-10 shrink-0">
           <Image 
-            src={"/placeholder.jpg"} 
+            src={profileImage} 
             alt={user?.name || "Org"}
             fill
+            sizes="40px"
             className="rounded-full object-cover border-2 border-white/10"
             priority
           />
         </div>
+        </Link>
         
         {/* Hide Text when Collapsed */}
         {!isCollapsed && (
@@ -55,7 +59,7 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
       </div>
 
       {/* 2. Navigation Links */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
         
         {/* Publish Button */}
         <Link 

@@ -4,20 +4,17 @@ import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NgoSignupFormValues, ngoSignupSchema } from "@/lib/validation/ngoSignupSchema";
-import { registerNgoAction } from "@/app/actions/auth"; // Your Server Action
+import { registerNgoAction } from "@/app/api/auth/auth"; 
+import SubmitButton from "../auth/SubmitButton";
 
 export default function NgoSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
 
-  // 1. Hook up the Server Action
   const [state, formAction, isPending] = useActionState(registerNgoAction, undefined);
 
-  // 2. Keep React Hook Form for CLIENT-SIDE UI validation only
   const {
     register,
     formState: { errors },
@@ -32,8 +29,6 @@ export default function NgoSignupForm() {
       confirmPassword: ""
     }
   });
-
-  // Note: 'onSubmit' is removed. The 'action' prop handles submission.
 
   return (
     <form action={formAction} className="space-y-4">
@@ -132,20 +127,13 @@ export default function NgoSignupForm() {
         )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full mt-4" 
-        disabled={isPending} // ✅ Use Hook's pending state
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Verifying & Registering...
-          </>
-        ) : (
-          "Register NGO"
-        )}
-      </Button>
+      <SubmitButton 
+                isLoading={isPending} 
+                loadingText="Signing in..."
+                className="mt-8" 
+              >
+                  Sign Up
+              </SubmitButton>
     </form>
   );
 }

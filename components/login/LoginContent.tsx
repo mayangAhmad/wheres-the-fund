@@ -1,4 +1,5 @@
 //components/login/LoginContent.tsx
+// main ui
 "use client";
 
 import { useState } from "react";
@@ -75,7 +76,7 @@ export default function LoginContent() {
             </>
           )}
 
-          {/* Pass loading props to forms */}
+          {/* Pass loading props to forms */}       
           {role === "donor" ? (
             <DonorLoginForm />
           ) : (

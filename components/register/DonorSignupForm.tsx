@@ -4,17 +4,15 @@ import { useState, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DonorSignupFormValues, donorSignupSchema } from "@/lib/validation/donorSignupSchema";
-import { registerDonorAction } from "@/app/actions/auth"; // Import Action
+import { registerDonorAction } from "@/app/api/auth/auth"; 
+import SubmitButton from "../auth/SubmitButton";
 
 export default function DonorSignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   
-  // Hook up Server Action
   const [state, formAction, isPending] = useActionState(registerDonorAction, undefined);
 
   const {
@@ -112,20 +110,13 @@ export default function DonorSignupForm() {
         )}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full mt-4" 
-        disabled={isPending}
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Creating Account...
-          </>
-        ) : (
-          "Sign Up"
-        )}
-      </Button>
+     <SubmitButton 
+               isLoading={isPending} 
+               loadingText="Signing in..."
+               className="mt-8" 
+             >
+                 Sign Up
+             </SubmitButton>
     </form>
   );
 }
