@@ -1,9 +1,13 @@
 // components/ngo-dashboard/ngo-dashboard-content.tsx
 "use client";
 
+import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useNgoUser } from "@/context/NgoUserContext";
 import { DashboardSummaryCards } from "@/components/ngo-dashboard/DashboardSummaryCards";
-import WalletDisplay from "./WalletDisplay"; 
+import WalletDisplay from "./WalletDisplay";
+import StripeConnectButton from "./StripeConnectButton";
 
 // Define the shape of the stats
 interface DashboardProps {
@@ -17,6 +21,16 @@ interface DashboardProps {
 
 export default function DashboardContent({ initialStats }: DashboardProps) {
   const { user } = useNgoUser(); // Still use this for Name/Wallet
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get("payment_setup") === "success") {
+      toast.success("Bank account connected successfully!");
+      // Clean up the URL
+      router.replace("/ngo/dashboard");
+    }
+  }, [searchParams, router]);
 
   // Format the props for the cards
   const statsDisplay = {
@@ -25,6 +39,8 @@ export default function DashboardContent({ initialStats }: DashboardProps) {
     donors: initialStats.donors,
     completionRate: initialStats.completionRate,
   };
+
+  const hasStripeAccount = !!user.stripe_account_id;
 
   return (
     <main className="space-y-6 w-full max-w-[88rem] mx-auto">
@@ -37,14 +53,23 @@ export default function DashboardContent({ initialStats }: DashboardProps) {
             Here is what is happening with your campaigns today.
           </p>
         </div>
-        <div className="flex items-center justify-between md:justify-start gap-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 w-full md:w-auto min-w-0 overflow-hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 shrink-0">
-            Wallet
-          </span>
-          <div className="truncate"> 
-            <WalletDisplay address={user.wallet_address} />
+
+        <div className="flex flex-col gap-3 w-full md:w-auto items-start md:items-end">
+          
+          <div className="flex items-center justify-between md:justify-start gap-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 w-full md:w-auto min-w-0 overflow-hidden">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 shrink-0">
+              Wallet
+            </span>
+            <div className="truncate">
+              <WalletDisplay address={user.wallet_address} />
+            </div>
           </div>
+
+          <StripeConnectButton isConnected={hasStripeAccount} />
+          
         </div>
+
+        
       </header>
 
       <section>

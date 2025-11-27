@@ -43,6 +43,7 @@ export interface BaseUser {
 }
 
 export interface NgoUser extends BaseUser {
+  stripe_account_id: string;
   ssm_number: string;
-  campaigns: CampaignSummary[]; 
+  campaigns: CampaignSummary[];
 }

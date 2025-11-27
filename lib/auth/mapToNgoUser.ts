@@ -1,10 +1,10 @@
 // // lib/auth/mapToNgoUser.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
- import { NgoUser } from "@/types/ngo"; 
+import { NgoUser } from "@/types/ngo";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 // export async function mapToNgoUser(user: SupabaseUser): Promise<NgoUser> {
-  
+
 //   const { data, error } = await supabaseAdmin
 //     .from("users")
 //     .select(`
@@ -28,7 +28,7 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 //   const profile = Array.isArray(data.ngo_profiles) 
 //     ? data.ngo_profiles[0] 
 //     : data.ngo_profiles;
-  
+
 //   if (!profile) throw new Error("Profile structure mismatch");
 
 //   return {
@@ -51,7 +51,9 @@ export async function mapToNgoUser(user: SupabaseUser): Promise<NgoUser> {
     .from("users")
     .select(`
       id, name, email, wallet_address, kms_key_id, role,
-      ngo_profiles!inner ( ssm_number )
+      ngo_profiles!inner ( 
+      ssm_number,
+      stripe_account_id )
     `)
     .eq("id", user.id)
     .eq("role", "ngo")
@@ -69,6 +71,7 @@ export async function mapToNgoUser(user: SupabaseUser): Promise<NgoUser> {
     kms_key_id: data.kms_key_id,
     role: data.role,
     ssm_number: profile.ssm_number,
+    stripe_account_id: profile.stripe_account_id,
     campaigns: [], // ⚡️ Return empty array here. Layout stays fast!
   } as NgoUser;
 }

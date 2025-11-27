@@ -102,6 +102,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
   }
 
   const headerData = {
+    id: basicInfo.id,
     category: basicInfo.category || 'General',
     ngoName: basicInfo.ngo_name || 'Verified NGO',
     createdAt: basicInfo.created_at,

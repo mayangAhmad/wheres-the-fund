@@ -1,9 +1,13 @@
+'use client'
+import { useState } from "react";
 import { User, Tag, HeartHandshake } from "lucide-react";
 import { AmountProgress } from "./AmountProgress";
 import Image from "next/image";
+import DonationModal from "../donation/DonationModal";
 
 interface HeaderProps {
   data: {
+    id:string;
     category: string;
     ngoName: string;
     createdAt: string | null;
@@ -14,10 +18,11 @@ interface HeaderProps {
     targetAmount: number;
     collectedAmount: number;
   };
-  onDonate?: () => void;
 }
 
-export default function CampaignHeader({ data, onDonate }: HeaderProps) {
+export default function CampaignHeader({ data }: HeaderProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const formattedDate = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString("en-GB")
     : "Recent";
@@ -26,6 +31,8 @@ export default function CampaignHeader({ data, onDonate }: HeaderProps) {
     (data.collectedAmount / (data.targetAmount || 1)) * 100,
     100
   ).toFixed(0);
+
+  
 
   return (
     <div className="flex flex-col md:flex-row gap-6 mb-12 w-full">
@@ -105,7 +112,7 @@ export default function CampaignHeader({ data, onDonate }: HeaderProps) {
 
           {/* Donate Button */}
           <button
-            onClick={onDonate}
+            onClick={() => setIsModalOpen(true)} // 5. Direct Trigger
             className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-base py-3 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <HeartHandshake size={18} />
@@ -113,6 +120,12 @@ export default function CampaignHeader({ data, onDonate }: HeaderProps) {
           </button>
         </div>
       </div>
+
+      <DonationModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        campaignId={data.id}
+      />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 // app/ngo/dashboard/page.tsx
-
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import { supabaseAdmin } from "@/lib/supabase/admin"; // Use Admin for direct DB access
 import DashboardContent from "@/components/ngo-dashboard/DashboardContent";
@@ -24,6 +23,7 @@ async function getDashboardStats(userId: string) {
 export default async function DashboardPage() {
   const user = await getAuthenticatedUser();
   if (!user) return null;
+
 
   // 2. This fetch happens in parallel with the UI rendering
   // The 'loading.tsx' skeleton will show while this runs!

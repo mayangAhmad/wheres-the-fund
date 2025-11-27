@@ -22,6 +22,9 @@ contract CampaignFactory is EIP712, Ownable {
     bytes32 private constant CREATE_CAMPAIGN_TYPEHASH =
         keccak256("CreateCampaign(string title,uint256 targetAmount,uint256 deadline,uint256 nonce)");
 
+    bytes32 private constant DONATE_TYPEHASH =
+        keccak256("Donate(uint256 onChainId,uint256 amount,string paymentRef,uint256 nonce)");
+
     uint256 private nextId = 1;
     mapping(uint256 => Campaign) public campaigns;
     mapping(address => uint256) public nonces;
@@ -35,7 +38,12 @@ contract CampaignFactory is EIP712, Ownable {
         uint256 createdAt
     );
 
-    event DonationRecorded(uint256 indexed campaignId, uint256 amount, string paymentRef);
+    event DonationRecorded(
+        uint256 indexed onChainId, 
+        address indexed donor,
+        uint256 amount, 
+        string paymentRef
+    );
 
     // 3. Update Constructor: Accept initialOwner and pass to Ownable
     constructor(address initialOwner) 
@@ -43,19 +51,31 @@ contract CampaignFactory is EIP712, Ownable {
         Ownable(initialOwner) 
     {}
 
-    // 4. Protect this function with 'onlyOwner'
-    // This ensures only your backend (the owner) can record fiat payments on-chain.
-    function recordFiatDonation(uint256 campaignId, uint256 amount, string calldata paymentRef) external onlyOwner {
-        Campaign storage campaign = campaigns[campaignId];
+    function donateWithSignature(
+        uint256 onChainId,
+        uint256 amount,
+        string memory paymentRef,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        address donor = _recoverDonationSigner(onChainId, amount, paymentRef, nonce, signature);
+        require(donor != address(0), "Invalid signature");
+
+        require(nonces[donor] == nonce, "Invalid nonce");
+        nonces[donor]++;
+
+        Campaign storage campaign = campaigns[onChainId];
         require(campaign.id != 0, "Campaign does not exist");
         require(!campaign.closed, "Campaign is closed");
         
-        // Optional: You can comment this out if you want to allow late donations
-        require(block.timestamp < campaign.deadline, "Campaign expired");
+        // Optional: Check deadline
+        // require(block.timestamp < campaign.deadline, "Campaign expired");
 
         campaign.collectedAmount += amount;
         
-        emit DonationRecorded(campaignId, amount, paymentRef);
+        // D. Emit Event (Now proves 'donor' signed it)
+        emit DonationRecorded(onChainId, donor, amount, paymentRef);
+
     }
 
     function createCampaignWithSignature(
@@ -100,6 +120,26 @@ contract CampaignFactory is EIP712, Ownable {
                 keccak256(bytes(title)),
                 targetAmount,
                 deadline,
+                nonce
+            )
+        );
+        bytes32 digest = _hashTypedDataV4(structHash);
+        return ECDSA.recover(digest, signature);
+    }
+
+    function _recoverDonationSigner(
+        uint256 onChainId,
+        uint256 amount,
+        string memory paymentRef,
+        uint256 nonce,
+        bytes memory signature
+    ) internal view returns (address) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                DONATE_TYPEHASH,
+                onChainId,
+                amount,
+                keccak256(bytes(paymentRef)),
                 nonce
             )
         );
