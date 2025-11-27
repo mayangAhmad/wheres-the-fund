@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-
 interface RoleToggleProps {
   role: "donor" | "ngo";
   setRole: (role: "donor" | "ngo") => void;
@@ -9,19 +7,38 @@ interface RoleToggleProps {
 
 export default function RoleToggle({ role, setRole }: RoleToggleProps) {
   return (
-    <div className="flex justify-center gap-4 mb-12">
-      <Button
-        variant={role === "donor" ? "default" : "outline"}
+    <div className="grid grid-cols-2 bg-gray-100 rounded-md">
+      <button
+        type="button"
         onClick={() => setRole("donor")}
+        className={`
+          py-2.5 text-sm font-semibold rounded-md transition-all duration-300
+          ${role === "donor" 
+            // ACTIVE STATE: Your custom color
+            ? "bg-[#182F44] text-white shadow-md" 
+            // INACTIVE STATE
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+          }
+        `}
       >
         Donor
-      </Button>
-      <Button
-        variant={role === "ngo" ? "default" : "outline"}
+      </button>
+      
+      <button
+        type="button"
         onClick={() => setRole("ngo")}
+        className={`
+          py-2.5 text-sm font-semibold rounded-md transition-all duration-300
+          ${role === "ngo" 
+            // ACTIVE STATE: Your custom color
+            ? "bg-[#182F44] text-white shadow-md" 
+            // INACTIVE STATE
+            : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+          }
+        `}
       >
         NGO
-      </Button>
+      </button>
     </div>
   );
 }

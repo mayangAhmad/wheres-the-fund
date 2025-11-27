@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import CampaignStepOne from "./CampaignStepOne";
 import CampaignStepTwo from "./CampaignStepTwo";
 import CampaignStepThree from "./CampaignStepThree";
-import { Button } from "../ui/button";
+import { Button } from "../../../ui/button";
 import LoadingModal from "./LoadingModal";
 import { useNgoUser } from "@/context/NgoUserContext";
 import { Loader2 } from "lucide-react";
@@ -42,13 +42,12 @@ export default function CreateCampaignForm() {
   const form = useForm<CampaignFormInput>({
     resolver: zodResolver(campaignFormInputSchema),
     defaultValues: {
-      category: "standard",
+      category: undefined,
       title: "",
       description: "",
       photo: undefined,
       goal_amount: "",
       end_date: "",
-      milestones: ["", "", ""],
       background: "",
       problems: [""],
       solutions: [""],
@@ -56,6 +55,11 @@ export default function CreateCampaignForm() {
       campaign_address: "",
       pic1: { name: "", contact: "" },
       pic2: { name: "", contact: "" },
+      milestones: [
+      { title: "", description: "" }, // M1
+      { title: "", description: "" }, // M2
+      { title: "", description: "" }, // M3
+    ],
     },
     mode: "onBlur", 
   });
@@ -149,7 +153,6 @@ export default function CreateCampaignForm() {
       </div>
     </form>
 
-    {/* ✅ Loading modal */}
       <LoadingModal open={isSubmitting} />
     </>
   );

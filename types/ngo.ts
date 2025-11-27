@@ -1,6 +1,25 @@
 // types/ngo.ts
 
-// 1. Define the Lightweight Summary (Matches your Dashboard Query)
+// 1. Define the Milestone interface based on your SQL schema
+export interface Milestone {
+  id: string;
+  campaign_id: string;
+  milestone_index: number;
+  title: string;
+  description: string;
+  funds_allocated_percent: number;
+  target_amount: number;
+  status: 'locked' | 'active' | 'pending_review' | 'approved' | 'rejected';
+  proof_description: string | null;
+  proof_images: string[] | null;   // JSONB usually returns as array
+  proof_invoices: string[] | null; // JSONB usually returns as array
+  submission_date: string | null;
+  auditor_remarks: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CampaignSummary {
   id: string;
   title: string;
@@ -10,7 +29,6 @@ export interface CampaignSummary {
   tx_hash: string | null;
 }
 
-// 2. Define the Full Details (Matches your Campaign Details Page)
 export interface Campaign extends CampaignSummary {
   ngo_id: string | null;
   ngo_name: string | null;
@@ -22,7 +40,8 @@ export interface Campaign extends CampaignSummary {
   on_chain_id: number | null;
   wallet_address: string | null;
   contract_address: string | null;
-  milestones: string[] | null;
+  milestones: Milestone[] | null; 
+  
   problems: string[] | null;
   solutions: string[] | null;
   background: string | null;
@@ -44,5 +63,8 @@ export interface BaseUser {
 
 export interface NgoUser extends BaseUser {
   ssm_number: string;
+  avatar_url?: string | null; 
+  website_url?: string | null;
+  description?: string | null;
   campaigns: CampaignSummary[]; 
 }

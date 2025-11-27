@@ -81,15 +81,15 @@ export default function OurStory({
             </h4>
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-gray-600">
-                <Mail size={18} className="text-orange-500 flex-shrink-0"/>
+                <Mail size={18} className="text-orange-500 shrink-0"/>
                 <span className="text-sm truncate" title={email}>{email || 'No email provided'}</span>
               </div>
               <div className="flex items-center gap-3 text-gray-600">
-                <Phone size={18} className="text-orange-500 flex-shrink-0"/>
+                <Phone size={18} className="text-orange-500 shrink-0"/>
                 <span className="text-sm">{phone || 'No phone provided'}</span>
               </div>
               <div className="flex items-start gap-3 text-gray-600">
-                <MapPin size={18} className="text-orange-500 flex-shrink-0 mt-0.5"/>
+                <MapPin size={18} className="text-orange-500 shrink-0 mt-0.5"/>
                 <span className="text-sm">{location || 'No address provided'}</span>
               </div>
             </div>

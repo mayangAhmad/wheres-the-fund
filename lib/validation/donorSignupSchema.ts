@@ -11,10 +11,3 @@ export const donorSignupSchema = z.object({
 });
 
 export type DonorSignupFormValues = z.infer<typeof donorSignupSchema>;
-
-export const loginSchema = z.object({
-  email: z.email("Please enter a valid email address."),
-  password: z.string().min(1, "Password is required."), 
-});
-
-export type LoginFormValues = z.infer<typeof loginSchema>;
