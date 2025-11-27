@@ -176,7 +176,7 @@ export default function UpdateMilestoneModal({ isOpen, onClose, milestone, campa
                 {invoiceFiles.map((file, idx) => (
                   <div key={idx} className="flex items-center justify-between p-2 bg-white border rounded text-xs shadow-sm">
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                      <FileText size={14} className="text-gray-400 shrink-0" />
                       <span className="truncate max-w-[100px]">{file.name}</span>
                     </div>
                     <button onClick={() => removeFile('invoice', idx)} className="text-red-500 hover:text-red-700">

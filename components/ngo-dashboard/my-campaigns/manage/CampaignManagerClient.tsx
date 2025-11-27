@@ -7,7 +7,7 @@ import {
   Users, TrendingUp, ArrowLeft 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import UpdateMilestoneModal from "./modals/UpdateMilestoneModal";
+import UpdateMilestoneModal from "./UpdateMilestoneModal";
 
 interface Props {
   campaign: any;

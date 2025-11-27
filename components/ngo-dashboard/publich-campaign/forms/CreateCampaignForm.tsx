@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import CampaignStepOne from "./CampaignStepOne";
 import CampaignStepTwo from "./CampaignStepTwo";
 import CampaignStepThree from "./CampaignStepThree";
-import { Button } from "../ui/button";
+import { Button } from "../../../ui/button";
 import LoadingModal from "./LoadingModal";
 import { useNgoUser } from "@/context/NgoUserContext";
 import { Loader2 } from "lucide-react";

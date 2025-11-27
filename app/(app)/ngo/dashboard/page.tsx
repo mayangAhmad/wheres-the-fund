@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import { supabaseAdmin } from "@/lib/supabase/admin"; // Use Admin for direct DB access
-import DashboardContent from "@/components/ngo-dashboard/DashboardContent";
+import HomeDashboardContent from "@/components/ngo-dashboard/home/HomeDashboard";
 
 // 1. Create a specific fetch for the dashboard
 async function getDashboardStats(userId: string) {
@@ -30,5 +30,5 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats(user.id);
 
   // 3. Pass stats as props
-  return <DashboardContent initialStats={stats} />;
+  return <HomeDashboardContent initialStats={stats} />;
 }

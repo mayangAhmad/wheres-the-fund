@@ -1,6 +1,6 @@
 import createClient from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import CampaignListClient from "@/components/ngo-dashboard/CampaignListClient";
+import CampaignListClient from "@/components/ngo-dashboard/my-campaigns/CampaignListClient";
 
 export default async function NgoCampaignsPage() {
   // 👇 FIX: Add 'await' here

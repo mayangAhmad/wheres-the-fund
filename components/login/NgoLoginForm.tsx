@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoginFormValues, loginSchema } from "@/lib/validation/userLoginSchema";
-import { loginNgoAction } from "@/app/actions/auth"; // Your Server Action
+import { loginNgoAction } from "@/app/api/auth/auth"; // Your Server Action
 import SubmitButton from "../auth/SubmitButton";
 
 export default function NgoLoginForm() {

@@ -1,4 +1,4 @@
-import CampaignManagerClient from "@/components/ngo-dashboard/CampaignManagerClient";
+import CampaignManagerClient from "@/components/ngo-dashboard/my-campaigns/manage/CampaignManagerClient";
 import { getAuthenticatedUser, getSupabase } from "@/lib/auth/getAuthenticatedUser";
 import { redirect } from "next/navigation";
 
