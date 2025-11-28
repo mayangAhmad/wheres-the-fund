@@ -3,7 +3,7 @@ import { useState } from "react";
 import { User, Tag, HeartHandshake } from "lucide-react";
 import { AmountProgress } from "../AmountProgress";
 import Image from "next/image";
-import DonationModal from "../donation/DonationModal";
+import DonationModal from "@/components/donation/DonationModal";
 
 interface HeaderProps {
   data: {

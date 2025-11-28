@@ -126,6 +126,7 @@ export async function POST(req: Request) {
         console.log("Wallet Address:", wallet_address);
         console.log("Expected Nonce:", expectedNonce); // Is this undefined?
         console.log("Payment Ref:", paymentIntentId);
+        console.log("donation DBID: ", donationDbId);
         console.log("--------------------------------");
 
         const signature = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
@@ -144,11 +145,43 @@ export async function POST(req: Request) {
         // Update DB with Hash immediately (for tracking)
         await supabaseAdmin
             .from("donations")
-            .update({ tx_hash: tx.hash })
+            .update({ on_chain_tx_hash: tx.hash })
             .eq("id", donationDbId);
 
         // Wait for confirmation
         const receipt = await tx.wait();
+
+        let isVerified = false;
+        let recordedAmount = null;
+
+        for (const log of receipt.logs) {
+            try {
+                // Attempt to decode the log using your ABI
+                const parsedLog = campaignContract.interface.parseLog(log);
+
+                // Check if this is the specific event we defined in Solidity
+                if (parsedLog && parsedLog.name === "DonationRecorded") {
+
+                    const onChainPaymentRef = parsedLog.args[3];
+                    const onChainAmount = parsedLog.args[2];
+
+                    // Compare it with what we sent
+                    if (onChainPaymentRef === paymentIntentId) {
+                        isVerified = true;
+                        recordedAmount = onChainAmount.toString();
+                        console.log("✅ VERIFIED: Data is on Blockchain!");
+                        console.log(`   - Payment Ref: ${onChainPaymentRef}`);
+                        console.log(`   - Amount (Wei): ${onChainAmount}`);
+                    }
+                }
+            } catch (err) {
+                // Ignore logs that don't match our ABI (like internal system logs)
+            }
+        }
+
+        if (!isVerified) {
+            throw new Error("Transaction mined, but 'DonationRecorded' event was missing or incorrect!");
+        }
 
         await supabaseAdmin
             .from("donations")
