@@ -1,15 +1,35 @@
-"use client"
+import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { redirect } from "next/navigation";
+import createClient from "@/lib/supabase/server";
+import NotificationClient from "@/components/ngo-dashboard/notifications/NotificationClient";
 
-export default function NotificationsPage() {
+export const metadata = {
+  title: "Notifications | NGO Dashboard",
+};
+
+export default async function NotificationsPage() {
+  // 1. Auth Check
+  const user = await getAuthenticatedUser();
+  if (!user) redirect("/login");
+
+  const supabase = createClient();
+  const { data: notifications, error } = await (await supabase)
+    .from("notifications")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  // Debugging: Check if this is actually returning what we expect
+  if (error) console.error("Supabase Error:", error);
+
   return (
-    <main >
-      <header className="p-4 bg-white shadow-md rounded-xl mx-auto w-352 mr-6 ml-6">
-        <h1 className="text-xl font-bold">Notifications</h1>
-      </header>
-
-      <section className="mt-6 p-4 bg-white shadow-md rounded-xl mx-auto w-352 mr-6 ml-6">
-        <p className="text-gray-600">This is where NGO can view notifications</p>
-      </section>
+    <main className="...">
+        {/* ... headers ... */}
+        <NotificationClient 
+            initialNotifications={notifications || []} // FIX: Add "|| []" here too
+            userId={user.id} 
+        />
     </main>
   );
 }

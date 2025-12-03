@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import createClient from "@/lib/supabase/server";
-import { registerUser } from "@/lib/services/userService"; // Reusing your existing service
+import { registerUser } from "@/lib/services/userService";
 import { loginSchema } from "@/lib/validation/userLoginSchema";
 import { ngoSignupSchema } from "@/lib/validation/ngoSignupSchema";
 import { donorSignupSchema } from "@/lib/validation/donorSignupSchema";
@@ -14,7 +14,7 @@ export type ActionState = {
   message?: string;
 };
 
-// --- 1. LOGIN ACTION ---
+// --- 1. LOGIN ACTION (NGO) ---
 export async function loginNgoAction(
   prevState: ActionState | undefined,
   formData: FormData
@@ -31,7 +31,7 @@ export async function loginNgoAction(
 
   const { email, password } = validated.data;
 
-  // Supabase Auth (Sets Cookie automatically)
+  // Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -41,8 +41,7 @@ export async function loginNgoAction(
     return { error: authError.message };
   }
 
-  // Server-Side Role Check (The 404 Fix)
-  // We query the DB directly before the user ever moves pages.
+  // Fetch Role
   const { data: profile } = await supabase
     .from("users")
     .select("role")
@@ -51,15 +50,21 @@ export async function loginNgoAction(
 
   const role = profile?.role || "donor";
 
-  // Redirect Logic
+  // 🚦 TRAFFIC CONTROLLER
+  if (role === "admin") {
+    redirect("/admin/dashboard");
+  }
+
   if (role === "ngo") {
-    revalidatePath("/", "layout"); // Clear cache
-    redirect("/ngo/dashboard");    // Atomic Redirect
+    revalidatePath("/", "layout");
+    redirect("/ngo/dashboard");
   } else {
+    // If a donor tries to login here, send them to their dashboard
     redirect("/donor/dashboard");
   }
 }
 
+// --- 2. REGISTER ACTION (NGO) ---
 export async function registerNgoAction(
   prevState: ActionState | undefined,
   formData: FormData
@@ -75,7 +80,7 @@ export async function registerNgoAction(
 
   const { email, password, orgName, ssmNumber } = validated.data;
 
-  //SSM VERIFICATION 
+  // SSM VERIFICATION 
   try {
     const mockUrl = new URL("https://68f342dafd14a9fcc4283dd6.mockapi.io/ngos/ngos-verification");
     mockUrl.searchParams.append("ssmNumber", ssmNumber.trim());
@@ -91,7 +96,6 @@ export async function registerNgoAction(
     }
 
     const ssmData = await ssmRes.json();
-    
     const isValidSSM = Array.isArray(ssmData) && ssmData.length > 0;
 
     if (!isValidSSM) {
@@ -103,7 +107,7 @@ export async function registerNgoAction(
     return { error: "Failed to verify SSM number." };
   }
 
-  // 3. Create Auth User (Only happens if SSM check passes)
+  // Create Auth User
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -113,7 +117,7 @@ export async function registerNgoAction(
   if (authError) return { error: authError.message };
   if (!authData.user) return { error: "Something went wrong creating the user." };
 
-  // 4. Atomic Profile Creation
+  // Atomic Profile Creation
   try {
     await registerUser({
       id: authData.user.id,
@@ -126,11 +130,10 @@ export async function registerNgoAction(
     return { error: err.message || "Failed to create profile." };
   }
 
-  // 5. Redirect
   redirect("/auth/login?message=Registration successful! Please log in.");
 }
 
-// --- 3. DONOR LOGIN ACTION ---
+// --- 3. LOGIN ACTION (DONOR/ADMIN) ---
 export async function loginDonorAction(
   prevState: ActionState | undefined,
   formData: FormData
@@ -153,7 +156,7 @@ export async function loginDonorAction(
 
   if (authError) return { error: authError.message };
 
-  // Server-Side Role Check
+  // Fetch Role
   const { data: profile } = await supabase
     .from("users")
     .select("role")
@@ -161,6 +164,11 @@ export async function loginDonorAction(
     .single();
 
   const role = profile?.role || "donor";
+
+  // 🚦 TRAFFIC CONTROLLER
+  if (role === "admin") {
+    redirect("/admin/dashboard");
+  }
 
   if (role === "donor") {
     revalidatePath("/", "layout");
@@ -171,7 +179,7 @@ export async function loginDonorAction(
   }
 }
 
-// --- 4. DONOR REGISTER ACTION ---
+// --- 4. REGISTER ACTION (DONOR) ---
 export async function registerDonorAction(
   prevState: ActionState | undefined,
   formData: FormData

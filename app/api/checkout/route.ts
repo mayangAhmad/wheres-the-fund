@@ -8,11 +8,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { amount, campaignId } = body;
+        const { amount, campaignId } = body; 
 
-        let user = await getAuthenticatedUser();
+        // 0. Auth Check
+        const user = await getAuthenticatedUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        
+        // 1. Get or Create Stripe Customer for Donor
         let stripeCustomerId = null;
-
+        
         const { data: userProfile } = await supabaseAdmin
             .from("donor_profiles")
             .select("stripe_customer_id")
@@ -23,64 +29,105 @@ export async function POST(request: Request) {
             stripeCustomerId = userProfile.stripe_customer_id;
         } else {
             const customer = await stripe.customers.create({
-                email: user.email,
-                name: user.user_metadata?.name || "donor",
-                metadata: {
-                    userId: user.id,
-                }
+                email: user.email || undefined,
+                name: user.user_metadata?.name || "Donor",
+                metadata: { userId: user.id }
             });
-
             stripeCustomerId = customer.id;
 
-            await supabaseAdmin
-                .from("donor_profiles")
-                .update({ stripe_customer_id: stripeCustomerId })
-                .eq("user_id", user.id)
+            await supabaseAdmin.from("donor_profiles").upsert({ 
+                user_id: user.id,
+                stripe_customer_id: stripeCustomerId 
+            });
         }
 
+        // 2. Get Campaign & NGO Banking Details
         const { data: campaign } = await supabaseAdmin
             .from("campaigns")
-            .select("ngo_id")
+            .select("*, ngo_profiles(stripe_account_id)")
             .eq("id", campaignId)
             .single();
 
         if (!campaign) throw new Error("Campaign not found.");
 
-        const { data: ngoProfile } = await supabaseAdmin
-            .from("ngo_profiles")
-            .select("stripe_account_id")
-            .eq("ngo_id", campaign.ngo_id)
-            .single()
+        const destAccountId = campaign.ngo_profiles?.stripe_account_id;
 
-        const destAccountId = ngoProfile?.stripe_account_id;
+        // 3. Get All Milestones
+        const { data: milestones } = await supabaseAdmin
+            .from("milestones")
+            .select("*")
+            .eq("campaign_id", campaignId)
+            .order("milestone_index", { ascending: true });
 
-        if (!destAccountId) {
-            return NextResponse.json(
-                { error: "This NGO has not connected their bank account yet." },
-                { status: 404 }
-            );
+        if (!milestones || milestones.length === 0) {
+            throw new Error("Campaign has no milestones set up.");
         }
 
-        //create Payment Intent
+        // 4. Traffic Light Logic
+        const currentRaised = Number(campaign.collected_amount || 0);
+        const currentIndices = campaign.current_milestone_index || 0;
+        const currentMilestone = milestones.find(m => m.milestone_index === currentIndices);
+        
+        if (!currentMilestone) throw new Error("Current milestone index mismatch.");
+
+        let cumulativeCap = 0;
+        for (const m of milestones) {
+            if (m.milestone_index <= currentIndices) {
+                cumulativeCap += Number(m.target_amount);
+            }
+        }
+
+        const donationAmount = Number(amount);
+        const willExceedCap = (currentRaised + donationAmount) > cumulativeCap;
+        const isMilestoneLocked = currentMilestone.status !== 'active';
+
+        let transferData = null;
+        let dashboardDescription = ""; 
+
+        if (destAccountId && !willExceedCap && !isMilestoneLocked) {
+            // GREEN LIGHT: Direct Transfer
+            transferData = {
+                destination: destAccountId, 
+            };
+            dashboardDescription = `Donation to: ${campaign.title}`;
+        } else {
+            // RED LIGHT: Escrow (Held in Platform)
+            transferData = undefined; 
+            dashboardDescription = `🔒 ESCROW: ${campaign.title} (Held in WheresTheFund)`;
+        }
+
+        // 5. Create Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100), //convert to cent
+            amount: Math.round(donationAmount * 100),
             currency: 'myr',
             customer: stripeCustomerId,
             payment_method_types: ['card', 'fpx'],
+            
+            // --- UPDATED FIELD: USE SUFFIX INSTEAD ---
+            description: dashboardDescription, 
+            
+            // Fix: statement_descriptor is deprecated for cards. Use suffix.
+            // Result on Bank Statement: "YOUR_STRIPE_NAME * WheresTheFund"
+            statement_descriptor_suffix: "WheresTheFund", 
+            // -----------------------------------------
+
             metadata: {
                 campaignId: campaignId,
+                donorId: user.id, 
+                donorEmail: user.email || "unknown", 
+                milestoneIndex: currentIndices.toString(),
+                escrowStatus: transferData ? "DIRECT_TRANSFER" : "HELD_IN_PLATFORM" 
             },
-
-            transfer_data: {
-                destination: destAccountId, //move money to NGO acc
-            },
+            
+            transfer_data: transferData || undefined, 
         });
 
         return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+
     } catch (error: any) {
-        console.error('INTERNAL ERROR:', error);
+        console.error('PAYMENT ERROR:', error);
         return NextResponse.json(
-            { error: `Error creating payment intent: ${error.message}` },
+            { error: error.message },
             { status: 500 }
         );
     }

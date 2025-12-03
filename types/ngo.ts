@@ -69,3 +69,6 @@ export interface NgoUser extends BaseUser {
   description?: string | null;
   campaigns: CampaignSummary[];
 }
+
+
+//Transaction sent: 0x6f548e223d40e351f1f507c864b58e3d47b2eb0ed4d7aa80e00e1d68f7992b2c

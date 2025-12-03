@@ -42,8 +42,8 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
 
   return (
     <div 
-      // 1. Changed to Flex layout to align Button-Carousel-Button horizontally
-      className="w-full group select-none flex items-center gap-2 sm:gap-4" 
+      // FIX 1: Removed 'group' from here
+      className="w-full select-none flex items-center gap-2 sm:gap-4" 
       {...swipeHandlers}
     >
       
@@ -78,7 +78,8 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
                 className="shrink-0 w-full sm:w-[calc((100%-40px)/3)]"
                 aria-hidden={!isVisible}
               >
-                <div className="transition-transform duration-300 hover:-translate-y-2 h-full">
+                {/* FIX 2: Added 'group' here so the hover effect is isolated to this specific card */}
+                <div className="group transition-transform duration-300 hover:-translate-y-2 h-full">
                   <CampaignCard campaign={campaign} />
                 </div>
               </div>
