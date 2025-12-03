@@ -17,6 +17,7 @@ interface PicData {
   contact: string;
 }
 
+// UPDATE: Added proof fields to match the 'milestones' table
 interface Milestone {
   id: string;
   milestone_index: number;
@@ -25,6 +26,9 @@ interface Milestone {
   status: 'locked' | 'active' | 'pending_review' | 'approved' | 'rejected';
   funds_allocated_percent: number;
   target_amount: number;
+  proof_description?: string; // Added
+  proof_images?: string[];    // Added
+  proof_invoices?: string[];  // Added
 }
 
 interface ExtendedData {
@@ -37,7 +41,6 @@ interface ExtendedData {
   pic1: PicData | null;
   pic2: PicData | null;
   milestones: Milestone[];
-  // Note: We removed milestones from here because it's now a separate table
 }
 
 const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
@@ -61,7 +64,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       setLoading(true);
       const supabase = createClient();
 
-      // 1. Basic Info (Try from Context first, then fetch)
+      // 1. Basic Info
       let currentBasic = campaigns.find((c) => String(c.id) === String(id));
       
       if (!currentBasic) {
@@ -76,8 +79,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       if (currentBasic) setBasicInfo(currentBasic);
 
       // 2. Extended Info
-      // FIX: Removed 'milestones' from this select string.
-      // Asking for a deleted column crashes the query.
+      // We fetch milestones(*) which includes proof_description, proof_images, etc.
       const { data: heavyData, error } = await supabase
         .from('campaigns')
         .select(`
@@ -90,23 +92,22 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
           pic1, 
           pic2,
           milestones(*) 
-        `) // <--- Notice the milestones(*) syntax
+        `) 
         .eq('id', id)
         .single();
 
-        if (heavyData) {
-        // 4. Sort milestones (Postgres doesn't guarantee order)
+      if (heavyData) {
+        // Sort milestones by index to ensure 1 -> 2 -> 3 order
         const sortedMilestones = heavyData.milestones 
           ? heavyData.milestones.sort((a: Milestone, b: Milestone) => a.milestone_index - b.milestone_index)
           : [];
           
+        // Explicitly cast or assign to ensure types match
         setExtendedInfo({ ...heavyData, milestones: sortedMilestones });
       }
 
       if (error) {
         console.error('Supabase Fetch Error:', error.message);
-      } else if (heavyData) {
-        setExtendedInfo(heavyData);
       }
 
       setLoading(false);
