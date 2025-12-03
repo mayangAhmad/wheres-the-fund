@@ -49,7 +49,9 @@ export default function Nav() {
   const NAV_MENU_ITEMS: MenuItem[] = [
     { title: "Home", url: "/" },
     { title: "Campaigns", url: "/campaigns" },
+    { title: "Verified?", url: "/ngos" },
     { title: "Dashboard", url: dashboardUrl },
+
   ];
 
   return (
@@ -57,11 +59,8 @@ export default function Nav() {
       {/* Added 'relative' here so the absolute positioning of the nav works relative to this container */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
         
-        {/* 1. LEFT: Logo */}
         <Logo />
 
-        {/* 2. CENTER: Desktop Nav */}
-        {/* moved out of the left group and positioned absolutely in the center */}
         <nav className="hidden lg:flex items-center gap-6 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           {NAV_MENU_ITEMS.map((item) => (
             <Link
