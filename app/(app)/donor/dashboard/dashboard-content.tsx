@@ -1,6 +1,7 @@
 // app/donor/dashboard/dashboard-content.tsx
 "use client";
 
+import DonorImpactCircuit from "@/components/campaigns/flow-of-funds/DonorImpactCircuit";
 import { User } from "@supabase/supabase-js";
 
 interface DashboardContentProps {
@@ -13,6 +14,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
       <h1 className="text-2xl font-bold">Donor Dashboard</h1>
       <p>Welcome, {user.email}!</p>
       {/* Your dashboard content */}
+      <DonorImpactCircuit donorId={user.id}/>
     </div>
   );
 }

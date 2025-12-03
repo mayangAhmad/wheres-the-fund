@@ -13,7 +13,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface UserProfile {
     wallet_address: string;
     kms_key_id: string;
-    name?: string;
 }
 
 const EIP712_DOMAIN = {
@@ -33,11 +32,10 @@ const TYPES = {
 };
 
 export async function POST(req: Request) {
-    let donationDbId: string | null = null;
+    let createDonationIds: string[] = [];
 
     try {
         const user = await getAuthenticatedUser();
-
         const { paymentIntentId } = await req.json();
 
         // 1. VERIFY WITH STRIPE (Source of Truth)
@@ -69,154 +67,164 @@ export async function POST(req: Request) {
         if (profileError || !userProfile) throw new Error("User profile not found");
 
         const { wallet_address, kms_key_id } = userProfile;
-
-        // 3. PREPARE BLOCKCHAIN SIGNER
         const signer = createKmsSigner(kms_key_id);
-        const signerAddress = (await signer.getAddress()).toLowerCase();
+        const campaignUUID = paymentIntent.metadata.campaignId;
+        const totalAmount = paymentIntent.amount / 100;
 
-        if (signerAddress !== wallet_address.toLowerCase()) {
-            throw new Error("Security Mismatch: KMS key does not match stored wallet address");
+        //FETCH MILESTONES & CALCULATE TOTALS
+        const { data: milestones } = await supabaseAdmin
+            .from("milestones")
+            .select("*")
+            .eq("campaign_id", campaignUUID)
+            .order("milestone_index", { ascending: true });
+
+        if (!milestones || milestones.length === 0) {
+            throw new Error("No milestones found for this campaign.");
         }
 
-        const campaignUUID = paymentIntent.metadata.campaignId;
-        const amount = paymentIntent.amount / 100; // Convert cents to RM
-
-        // 4. SAVE TO DB (State: Processing)
-        const { data: draftDonation, error: insertError } = await supabaseAdmin
+        //fetch current donation to know current amount each milestones
+        const { data: allDonations } = await supabaseAdmin
             .from("donations")
-            .insert({
-                campaign_id: campaignUUID,
-                donor_id: user.id,
-                amount: amount,
-                stripe_payment_id: paymentIntentId,
-                status: "Processing",
-            })
-            .select("id")
-            .single();
+            .select("amount, milestone_index")
+            .eq("campaign_id", campaignUUID);
 
-        if (insertError || !draftDonation) throw new Error(`DB Insert Error: ${insertError?.message}`);
-        donationDbId = draftDonation.id;
+        const totals: Record<number, number> = {};
+        allDonations?.forEach((d) => {
+            totals[d.milestone_index] = (totals[d.milestone_index] || 0) + d.amount;
+        });
 
-        // 5. EXECUTE BLOCKCHAIN TRANSACTION
-        // Connect to the Contract
-
+        //BLOCKCHAIN INTERFACE
         const campaignContract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
-        const expectedNonce: bigint = await campaignContract.nonces(wallet_address);
+        let currentNonce = Number(await campaignContract.nonces(wallet_address));
 
-        const { data } = await supabaseAdmin
+        const { data: campaignData } = await supabaseAdmin
             .from("campaigns")
             .select("on_chain_id")
             .eq("id", campaignUUID)
-            .single();
+            .single()
+        const onChainId = BigInt(campaignData?.on_chain_id);
 
-        const amountWei = parseUnits(amount.toString(), 18);
-        const onChainId = BigInt(data?.on_chain_id);
+        //SPLIT LOOP
+        let remainingToAllocate = totalAmount;
+        let txHashes: string[] = [];
+        const lastMilestone = milestones[milestones.length - 1];
 
-        const value = {
-            onChainId: onChainId,
-            amount: amountWei,
-            paymentRef: paymentIntentId,
-            nonce: Number(expectedNonce),
-        };
+        //loop through milestones to fill them up
+        for (const m of (milestones || [])) {
+            if (remainingToAllocate <= 0) break;
 
-        console.log("--- DEBUGGING EIP-712 VALUES ---");
-        console.log("Campaign ID (Supabase):", campaignUUID);
-        console.log("On-Chain ID (BigInt):", data?.on_chain_id); // Is this null?
-        console.log("Amount (Wei):", amountWei);
-        console.log("Wallet Address:", wallet_address);
-        console.log("Expected Nonce:", expectedNonce); // Is this undefined?
-        console.log("Payment Ref:", paymentIntentId);
-        console.log("donation DBID: ", donationDbId);
-        console.log("--------------------------------");
+            const currentRaised = totals[m.milestone_index] || 0;
+            const spaceLeft = m.target_amount - currentRaised;
+            const isLastOne = (m.milestone_index === lastMilestone.milestone_index); //compare if it is last milestone or not
 
-        const signature = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
+            //if milestone full, skip (unless the last one dump everything)
+            if (spaceLeft <= 0 && !isLastOne) continue;
 
-        // Call: recordFiatDonation(uint256 campaignId, uint256 amount, string paymentRef)
-        const tx = await campaignContract.donateWithSignature(
-            onChainId,
-            amountWei,
-            paymentIntentId,
-            expectedNonce,
-            signature
-        );
+            //decide how much goes to this milestone, take smaller of what we have OR space available, if last milestone, force to take everything
+            let allocation = 0;
+            if (isLastOne) {
+                allocation = remainingToAllocate;
+            } else {
+                allocation = Math.min(remainingToAllocate, spaceLeft);
+            }
 
-        console.log("Tx Sent:", tx.hash);
+            if (allocation > 0) {
+                console.log(`Allocating RM ${allocation} to Milestone ${m.milestone_index}`);
 
-        // Update DB with Hash immediately (for tracking)
-        await supabaseAdmin
-            .from("donations")
-            .update({ on_chain_tx_hash: tx.hash })
-            .eq("id", donationDbId);
+                //INSERT TO DB
+                const { data: donationRecord, error } = await supabaseAdmin
+                    .from("donations")
+                    .insert({
+                        campaign_id: campaignUUID,
+                        donor_id: user.id,
+                        amount: allocation,
+                        stripe_payment_id: paymentIntentId,
+                        status: "Processing",
+                        milestone_index: m.milestone_index
+                    })
+                    .select("id")
+                    .single();
 
-        // Wait for confirmation
-        const receipt = await tx.wait();
+                if (error) throw new Error(error.message);
+                createDonationIds.push(donationRecord.id);
 
-        let isVerified = false;
-        let recordedAmount = null;
+                //SIGN EIP-712
+                const amountWei = parseUnits(allocation.toFixed(2), 18);
 
-        for (const log of receipt.logs) {
-            try {
-                // Attempt to decode the log using your ABI
-                const parsedLog = campaignContract.interface.parseLog(log);
+                const value = {
+                    onChainId: onChainId,
+                    amount: amountWei,
+                    paymentRef: `${paymentIntentId}_M${m.milestone_index}`,
+                    nonce: currentNonce,
+                };
 
-                // Check if this is the specific event we defined in Solidity
-                if (parsedLog && parsedLog.name === "DonationRecorded") {
+                const signature = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
 
-                    const onChainPaymentRef = parsedLog.args[3];
-                    const onChainAmount = parsedLog.args[2];
+                //SEND TRANSACTION
+                const tx = await campaignContract.donateWithSignature(
+                    onChainId,
+                    amountWei,
+                    `${paymentIntentId}_M${m.milestone_index}`,
+                    currentNonce,
+                    signature
+                );
 
-                    // Compare it with what we sent
-                    if (onChainPaymentRef === paymentIntentId) {
-                        isVerified = true;
-                        recordedAmount = onChainAmount.toString();
-                        console.log("✅ VERIFIED: Data is on Blockchain!");
-                        console.log(`   - Payment Ref: ${onChainPaymentRef}`);
-                        console.log(`   - Amount (Wei): ${onChainAmount}`);
-                    }
-                }
-            } catch (err) {
-                // Ignore logs that don't match our ABI (like internal system logs)
+                console.log(`Tx Sent for Milestone ${m.milestone_index}:`, tx.hash);
+                txHashes.push(tx.hash);
+
+                //UPDATE DB WITH HASH
+                await supabaseAdmin
+                    .from("donations")
+                    .update({ on_chain_tx_hash: tx.hash, status: 'completed' })
+                    .eq("id", donationRecord.id);
+
+                //UPDATE LOOP VARIABLES
+                remainingToAllocate -= allocation;
+                currentNonce++;
+
+                await tx.wait();
+
             }
         }
 
-        if (!isVerified) {
-            throw new Error("Transaction mined, but 'DonationRecorded' event was missing or incorrect!");
-        }
-
-        await supabaseAdmin
-            .from("donations")
-            .update({ status: "completed" })
-            .eq("id", donationDbId);
-
+        //FINAL CLEANUP-update campaign global total
         const { data: currentCampaign } = await supabaseAdmin
             .from("campaigns")
             .select("collected_amount")
             .eq("id", campaignUUID)
-            .single();
+            .single()
 
-        const newTotal = (currentCampaign?.collected_amount || 0) + amount;
+        const newTotal = (currentCampaign?.collected_amount || 0) + totalAmount;
 
         await supabaseAdmin
             .from("campaigns")
             .update({ collected_amount: newTotal })
             .eq("id", campaignUUID);
 
-        return NextResponse.json({ success: true, txHash: tx.hash });
-
+        return NextResponse.json({ success: true, txHashes });
     } catch (error: any) {
-        console.error("Finalize Error:", error);
+        console.error("Finalize error: ", error);
 
-        // CLEANUP: Mark as Failed but KEEP the record (Money was taken!)
-        if (donationDbId) {
+        //MARK ALL CREATED ROWS AS FAILED
+        if (createDonationIds.length > 0) {
             await supabaseAdmin
                 .from("donations")
-                .update({
-                    status: "Failed_OnChain",
-                    error_log: error.message
-                })
-                .eq("id", donationDbId);
+                .update({ status: "Failed_OnChain", error_log: error.message })
+                .in("id", createDonationIds);
         }
-
         return NextResponse.json({ error: error.message }, { status: 500 });
+
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

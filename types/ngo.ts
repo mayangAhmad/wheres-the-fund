@@ -69,3 +69,13 @@ export interface NgoUser extends BaseUser {
   description?: string | null;
   campaigns: CampaignSummary[];
 }
+
+export interface Donation {
+  id: string;
+  name: string;
+  time: string;
+  amount: number;
+  created_at: string;
+  targetMilestoneId: string;
+  milestone_index: number;
+}

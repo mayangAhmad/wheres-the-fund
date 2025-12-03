@@ -4,6 +4,7 @@ import { useState } from "react";
 import OurStory from "./OurStory";
 import MilestoneTabContent from "../milestones/MilestoneTabContent";
 import { Milestone } from "../milestones/MilestoneCard";
+import CircuitBoard from "../flow-of-funds/CircuitBoard";
 
 // Types
 interface PicData {
@@ -12,6 +13,7 @@ interface PicData {
 }
 
 interface TabsProps {
+  campaignId:string;
   description: string;
   background?: string;
   problem?: string | string[];
@@ -35,8 +37,8 @@ const normalizeStringArray = (input?: string | string[]): string[] => {
   return [input as string];
 };
 
-export default function CampaignTabs({ description, background, problem, solution, milestones = [], contact }: TabsProps) {
-  const tabs = ["Our Story", "Milestones", "Transaction Log"];
+export default function CampaignTabs({ campaignId, description, background, problem, solution, milestones = [], contact }: TabsProps) {
+  const tabs = ["Our Story", "Milestones", "Flow of Funds","Transaction Log"];
   const [active, setActive] = useState(tabs[0]);
 
   return (
@@ -81,6 +83,10 @@ export default function CampaignTabs({ description, background, problem, solutio
             <h3 className="text-lg font-medium text-gray-900">On-Chain Activity</h3>
             <p className="text-gray-500 mt-1">Live blockchain data integration in progress.</p>
           </div>
+        )}
+
+        {active === "Flow of Funds" && (
+          <CircuitBoard campaignId={campaignId}/>
         )}
       </div>
     </div>

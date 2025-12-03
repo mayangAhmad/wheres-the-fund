@@ -167,6 +167,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
         </div>
       ) : (
         <CampaignTabs
+          campaignId={id}
           description={basicInfo.description || ''}
           background={extendedInfo?.background || undefined}
           problem={extendedInfo?.problems || undefined}
