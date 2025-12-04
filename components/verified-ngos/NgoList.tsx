@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, SlidersHorizontal, ChevronDown, BadgeCheck, Building2, Globe, ArrowRight } from 'lucide-react'
 import { useDebounce } from 'use-debounce' 

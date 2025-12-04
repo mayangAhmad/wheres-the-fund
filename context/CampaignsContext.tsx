@@ -58,7 +58,6 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         'postgres_changes',
         { event: '*', schema: 'public', table: 'campaigns' },
         (payload) => {
-          // ✅ Selective updates instead of full refetch
           if (payload.eventType === 'INSERT') {
             const newCampaign = payload.new as Campaign;
             if (newCampaign.status === 'Ongoing') {
