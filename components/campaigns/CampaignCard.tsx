@@ -8,6 +8,7 @@ import wsrvLoader from '@/lib/services/image-service';
 
 interface CampaignCardProps {
   campaign: Campaign;
+  priority?: boolean;
 }
 
 const getDaysLeft = (endDateString: string | null): string => {
@@ -22,7 +23,7 @@ const getDaysLeft = (endDateString: string | null): string => {
     return `${diffDays} day${diffDays === 1 ? '' : 's'} left`;
 }
 
-const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
+const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, priority }) => {
     
     const collected = Number(campaign.collected_amount) || 0;
     const goal = Number(campaign.goal_amount) || 0;
@@ -44,8 +45,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105" // Added zoom effect on hover
-                    priority
+                    priority={priority}
                     quality={75}
+                    loading={priority ? 'eager' : 'lazy'} 
                 />
                 
                 <span 
@@ -88,8 +90,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
                     </div>
                 </div>
 
-                {/* 2. CHANGED: Donate Button is now a SPAN (Visual only) */}
-                {/* Because the parent is already a link, clicking this still works! */}
                 <span
                     className="mt-4 block w-full text-center bg-orange-600 group-hover:bg-orange-700 text-white text-sm font-semibold py-2 rounded transition-all"
                 >

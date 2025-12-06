@@ -2,9 +2,6 @@ import CampaignManagerClient from "@/components/ngo-dashboard/my-campaigns/manag
 import { getAuthenticatedUser, getSupabase } from "@/lib/auth/getAuthenticatedUser";
 import { redirect } from "next/navigation";
 
-  type Props = {
-  params: Promise<{ id: string }>
-}
 
 export default async function CampaignManagePage({ params }: { params: { id: string } }) {
 
