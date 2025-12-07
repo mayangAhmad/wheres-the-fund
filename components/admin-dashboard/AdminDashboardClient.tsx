@@ -5,20 +5,14 @@ import { CheckCircle, Loader2, AlertTriangle, ExternalLink, XCircle } from "luci
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; 
 import Image from "next/image";
+import type { AdminDashboardClientProps, MilestoneReview } from "@/types/dashboard";
 
-// Add props interface
-interface AdminDashboardClientProps {
-  initialReviews: any[];
-}
 
 export default function AdminDashboardClient({ initialReviews }: AdminDashboardClientProps) {
-  // Initialize state with the server data
-  const [reviews, setReviews] = useState<any[]>(initialReviews);
+  const [reviews, setReviews] = useState<MilestoneReview[]>(initialReviews);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // DELETED: useEffect fetch. We don't need it anymore.
-
-  const handleDecision = async (milestone: any, decision: 'approve' | 'reject') => {
+  const handleDecision = async (milestone: MilestoneReview, decision: 'approve' | 'reject') => {
     const action = decision === 'approve' ? "Release funds" : "Reject proof";
     if (!confirm(`${action}?`)) return;
 
@@ -45,18 +39,17 @@ export default function AdminDashboardClient({ initialReviews }: AdminDashboardC
         // Remove item from UI instantly
         setReviews(prev => prev.filter(r => r.id !== milestone.id));
 
-    } catch (error: any) {
+    } catch (error) {
         toast.dismiss(toastId);
-        toast.error(error.message);
-    } finally {
-        setProcessingId(null);
+        const message = error instanceof Error ? error.message : "An error occurred";
+        toast.error(message);
     }
-  };
+}
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* ... Header section remains the same ... */}
         <div className="flex items-center justify-between mb-8">
             <div>
                 <p className="text-gray-500">Review proofs and authorize payouts.</p>
@@ -77,7 +70,6 @@ export default function AdminDashboardClient({ initialReviews }: AdminDashboardC
                 </div>
             ) : (
                 reviews.map((r) => {
-                    // Use the ledger value directly
                     const pendingAmount = Number(r.campaigns?.escrow_balance || 0);
 
                     return (

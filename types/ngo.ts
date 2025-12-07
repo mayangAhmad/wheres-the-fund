@@ -1,6 +1,5 @@
 // types/ngo.ts
 
-// 1. Define the Milestone interface based on your SQL schema
 export interface Milestone {
   id: string;
   campaign_id: string;
@@ -79,3 +78,4 @@ export interface Donation {
   targetMilestoneId: string;
   milestone_index: number;
 }
+

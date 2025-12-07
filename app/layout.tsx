@@ -26,7 +26,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  metadataBase: "http://localhost:3000",
+  metadataBase: new URL("http://localhost:3000"),
   title: "WheresTheFund | Transparent Funds Tracking",
   description: "Blockchain-powered donation tracking system.",
   openGraph: {

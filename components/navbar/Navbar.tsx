@@ -16,42 +16,52 @@ export default function Nav() {
   const [dashboardUrl, setDashboardUrl] = useState("/");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Fetch user role once on mount
   useEffect(() => {
     const fetchUserRole = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      const role = user?.user_metadata?.role || "donor";
-      setDashboardUrl(role === "ngo" ? "/ngo/dashboard" : "/donor/dashboard");
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const role = user?.user_metadata?.role || "donor";
+        setDashboardUrl(role === "ngo" ? "/ngo/dashboard" : "/donor/dashboard");
+      } catch (error) {
+        console.error("Failed to fetch user role:", error);
+      }
     };
+    
     fetchUserRole();
   }, []);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      setIsMobileMenuOpen(false);
-    }
-  }, []);
-
+  // Handle escape key and overflow separately
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    } else {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
+    if (!isMobileMenuOpen) {
+      return;
     }
-    return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
+
+    // Set overflow on open
+    document.body.style.overflow = "hidden";
+
+    // Add single event listener
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+      }
     };
-  }, [isMobileMenuOpen, handleKeyDown]);
+
+    window.addEventListener("keydown", handleEscape);
+
+    // Cleanup: remove listener and restore overflow
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileMenuOpen]);
 
   const NAV_MENU_ITEMS: MenuItem[] = [
     { title: "Home", url: "/" },
     { title: "Campaigns", url: "/campaigns" },
     { title: "Verified?", url: "/ngos" },
     { title: "Dashboard", url: dashboardUrl },
-
   ];
 
   return (
