@@ -45,7 +45,7 @@ function BaseCircuitNode({ title, subtitle, value, isActive, colorTheme, onClick
       onClick={onClick}
       className={`w-full h-full px-4 py-2 rounded-xl border text-left transition-all duration-300 relative bg-white flex items-center justify-between shadow-sm ${
         isActive
-          ? `${theme.border} ring-2 shadow-lg scale-105 z-20`
+          ? `${theme.border} ring-2 shadow-lg scale-105 z-10`
           : 'border-gray-100 hover:border-gray-300 hover:shadow-md'
       }`}
     >
@@ -53,7 +53,7 @@ function BaseCircuitNode({ title, subtitle, value, isActive, colorTheme, onClick
         <div className={`font-bold text-sm truncate ${isActive ? theme.text : 'text-gray-700'}`} title={title}>
           {title}
         </div>
-        <div className="text-[10px] text-gray-400 truncate">{subtitle}</div>
+        <div className="text-[10px] text-gray-500 truncate">{subtitle}</div>
       </div>
       <div className={`text-xs font-mono font-bold whitespace-nowrap ${isActive ? theme.value : 'text-gray-500'}`}>
         {value}

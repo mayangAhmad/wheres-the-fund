@@ -51,8 +51,7 @@ export default function CircuitBoard({ campaignId }: Props) {
     fetchData();
   }, [campaignId]);
 
-  //MEASURE POSITIONS BY CALCULATE EXACT CENTER POINTS
-  //FIND Y-COORDINATE FOR DEAD CENTER OF BUTTON 
+  //MEASURE POSITIONS BY CALCULATE EXACT CENTER POINTS & FIND Y-COORDINATE FOR DEAD CENTER OF BUTTON 
   const updateCoordinates = () => {
     //stop if container isnt loaded yet
     if (!containerRef.current) return;
@@ -65,7 +64,6 @@ export default function CircuitBoard({ campaignId }: Props) {
       newDonorCoords[id] = el.offsetTop + (el.offsetHeight / 2);
     });
 
-    //measure milestone-same logic
     const newMilestoneCoords: Coords = {};
     milestoneRefs.current.forEach((el, id) => {
       // Measure center of each card
@@ -106,8 +104,7 @@ export default function CircuitBoard({ campaignId }: Props) {
     );
   }
 
-  // 1. Define Width: w-52 is 208px.
-  const DONOR_COL_WIDTH_CLASS = "w-52"; //for css button 
+  const DONOR_COL_WIDTH_CLASS = "w-52"; //for css button , 208px
   const DONOR_COL_WIDTH_PX = 208;  //for svg line
   
   // 2. Line Start: Start 10px inside the button for a solid connection

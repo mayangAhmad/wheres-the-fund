@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import OurStory from "./OurStory";
 import MilestoneTabContent from "../milestones/MilestoneTabContent";
 import { Milestone } from "../milestones/MilestoneCard";
 import CircuitBoard from "../flow-of-funds/CircuitBoard";
+import HistoryTable from "@/components/donor-dashboard/history/HistoryTable";
+import createClient from '@/lib/supabase/client';
+
 
 // Types
 interface PicData {
@@ -27,6 +30,8 @@ interface TabsProps {
   };
 }
 
+
+
 // Helper: String Normalizer
 const normalizeStringArray = (input?: string | string[]): string[] => {
   if (!input) return [];
@@ -40,6 +45,36 @@ const normalizeStringArray = (input?: string | string[]): string[] => {
 export default function CampaignTabs({ campaignId, description, background, problem, solution, milestones = [], contact }: TabsProps) {
   const tabs = ["Our Story", "Milestones", "Flow of Funds","Transaction Log"];
   const [active, setActive] = useState(tabs[0]);
+
+  const [transaction, setTransaction] = useState<any[]>([]);
+  const [loadingTransaction, setLoadingTransaction] = useState(false);
+
+  useEffect(() => {
+    if (active === "Transaction Log" && transaction.length === 0) {
+      const fetchTransactions = async () => {
+        setLoadingTransaction(true);
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("donations")
+          .select(`
+            *,  
+            users (id, name) 
+            
+          `)
+          .eq("campaign_id", campaignId)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching transactions:", error);
+        } else {
+          setTransaction(data || []);
+        }
+        setLoadingTransaction(false);
+      };
+
+      fetchTransactions();
+    }
+  }, [active, campaignId, transaction.length]);
 
   return (
     <div className="mt-10">
@@ -79,9 +114,9 @@ export default function CampaignTabs({ campaignId, description, background, prob
         )}
 
         {active === "Transaction Log" && (
-          <div className="p-10 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <h3 className="text-lg font-medium text-gray-900">On-Chain Activity</h3>
-            <p className="text-gray-500 mt-1">Live blockchain data integration in progress.</p>
+          <div className="mt-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 px-1">Public Ledger</h3>
+            <HistoryTable donations={transaction} mode="campaign"/>
           </div>
         )}
 

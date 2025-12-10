@@ -89,7 +89,7 @@ export default function HistoryClientView({ initialDonations }: HistoryClientVie
         </div>
       </div>
 
-      <HistoryTable donations={filteredDonations} />
+      <HistoryTable donations={filteredDonations} mode="donor"/>
     </div>
   );
 }

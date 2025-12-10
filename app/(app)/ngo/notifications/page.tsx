@@ -29,6 +29,7 @@ export default async function NotificationsPage() {
         <NotificationClient 
             initialNotifications={notifications || []} // FIX: Add "|| []" here too
             userId={user.id} 
+            mode={"full"}
         />
     </main>
   );

@@ -27,6 +27,7 @@ export default async function NotificationsPage() {
         <NotificationClient 
             initialNotifications={notifications || []} 
             userId={user.id} 
+            mode="full"
         />
     </main>
   );

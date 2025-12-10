@@ -57,6 +57,8 @@ export interface BaseUser {
   email: string;
   wallet_address: string;
   kms_key_id: string;
+  created_at: string;
+  phoneNum?: string;
   role: string;
 }
 
@@ -77,5 +79,12 @@ export interface Donation {
   created_at: string;
   targetMilestoneId: string;
   milestone_index: number;
+}
+
+export interface Notification {
+  id: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
 }
 

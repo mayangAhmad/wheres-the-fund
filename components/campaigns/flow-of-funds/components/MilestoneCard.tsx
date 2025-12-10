@@ -68,10 +68,10 @@ export default function MilestoneCard({ milestone, isTargeted, isCompact = false
 
   // --- SCENARIO 2: FULL VIEW (Public Page OR Donor Dashboard - Clicked State) ---
   return (
-    <div className={`p-5 rounded-xl border transition-all duration-500 relative flex flex-col justify-center shadow-sm w-full ${cardStyle}`}>
-      <div className="flex justify-between items-start mb-3">
+    <div className={`p-4 rounded-xl border transition-all duration-500 relative flex flex-col justify-center shadow-sm w-full ${cardStyle}`}>
+      <div className="flex justify-between items-start mb-2">
         <div>
-          <h4 className="font-semibold text-gray-800">{milestone.name}</h4>
+          <h4 className="font-semibold text-gray-800 line-clamp-1">{milestone.name}</h4>
           <p className="text-xs text-gray-500 mt-1">
             Target: <span className="font-mono">RM {milestone.targetAmount.toLocaleString()}</span>
           </p>
@@ -97,7 +97,7 @@ export default function MilestoneCard({ milestone, isTargeted, isCompact = false
 
       {/* Optional: Show User Contribution footer if data exists */}
       {(milestone.userContribution || 0) > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex justify-between">
+        <div className="mt-2 pt-2 border-t border-gray-300 text-[10px] text-gray-500 flex justify-between">
             <span>Your contribution:</span>
             <span className="font-bold text-gray-700">RM {milestone.userContribution}</span>
         </div>

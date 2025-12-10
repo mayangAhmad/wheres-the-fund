@@ -14,11 +14,10 @@ type Coords = Record<string, number>;
 
 // Layout Constants
 const LAYOUT = {
-  USER_COL_WIDTH: 128,      // w-32
-  CAMP_COL_WIDTH: 240,      // w-60
+  USER_COL_WIDTH: 190,      // w-32
+  CAMP_COL_WIDTH: 250,      // w-60
   GAP_1: 180,               // Space between User and Campaign
-  GAP_2: 180,               // Space between Campaign and Milestone
-  LINE_OFFSET: 20,          // Overlap for seamless look
+  LINE_OFFSET: 80,          // Overlap for seamless look
   FETCH_TIMEOUT_MS: 10000,  // 10 second timeout
 } as const;
 
@@ -117,15 +116,14 @@ export default function DonorImpactCircuit({ donorId }: Props) {
 
   useLayoutEffect(() => {
     const timer = setTimeout(updateCoordinates, 100);
-    const handleResize = () => updateCoordinates();
     
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', updateCoordinates);
     
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', updateCoordinates);
       clearTimeout(timer);
     };
-  }, [activeCampaignId, updateCoordinates]); 
+  }, [activeCampaignId, campaigns, milestones, loading]); 
 
   const visibleMilestones = activeCampaignId 
     ? milestones.filter((m) => m.campaignId === activeCampaignId)
@@ -134,7 +132,7 @@ export default function DonorImpactCircuit({ donorId }: Props) {
   // Calculated X Positions for SVG
   const CENTER_START_X = LAYOUT.USER_COL_WIDTH + LAYOUT.GAP_1;
   const CENTER_END_X = CENTER_START_X + LAYOUT.CAMP_COL_WIDTH;
-  const RIGHT_START_X = CENTER_END_X + LAYOUT.GAP_2;
+  const RIGHT_START_X = CENTER_END_X + LAYOUT.GAP_1;
 
   // Line Connection Points (Overlapping for seamless look)
   const LINE_1_START = LAYOUT.USER_COL_WIDTH - LAYOUT.LINE_OFFSET;
@@ -148,18 +146,14 @@ export default function DonorImpactCircuit({ donorId }: Props) {
   const CP2 = (LINE_2_START + LINE_2_END) / 2; 
 
   return (
-    <div className="w-full overflow-x-auto p-2">
-      <div className="min-w-[1100px] max-w-7xl mx-auto p-6 bg-white rounded-2xl shadow-xl border border-gray-200">
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[1200px] max-w-7xl mx-auto bg-white rounded-2xl border border-gray-200 z-0 relative isolate">
         
-        <div className="mb-6 flex justify-between items-end border-b border-gray-200 pb-4">
+        <div className="p-6 flex justify-between items-end border-b border-gray-200">
           <div>
             <h2 className="text-xl font-bold text-gray-800">My Impact Graph</h2>
             <p className="text-xs text-gray-500 mt-1">
-              {loading 
-                ? "Loading your impact data..."
-                : activeCampaignId 
-                ? "Viewing full campaign traceability details." 
-                : "Visualizing your direct impact on milestones."}
+              This is a visualization of how your donations have contributed to various campaigns and their milestones.
             </p>
           </div>
 
@@ -176,44 +170,40 @@ export default function DonorImpactCircuit({ donorId }: Props) {
           </button>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3 items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-800">Failed to load impact data</p>
-              <p className="text-xs text-red-700 mt-1">{error}</p>
-            </div>
+        {(loading || error) ? (
+          <div className={`flex flex-col items-center justify-center text-center ${loading ? "h-96" : "p-8 bg-red-50 border border-red-200 rounded-xl"}`}>
+            {loading ? (
+              <>
+                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-3" />
+                <p className="text-sm text-gray-600">Loading your impact visualization...</p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+                <p className="text-sm font-semibold text-red-800">Failed to load data</p>
+                <p className="text-xs text-red-600 mt-1">{error}</p>
+              </>
+            )}
           </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center h-96">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <p className="text-sm text-gray-600">Loading your impact visualization...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Main Circuit - Only show when not loading and no errors */}
-        {!loading && !error && (
-          <div ref={containerRef} className="flex relative" style={{ minHeight: '400px' }}>
+        ) : (
+          <div 
+            ref={containerRef} 
+            className="flex relative items-center justify-center p-10" 
+            style={{ minHeight: '400px' }}>
             
             {/* COL 1: USER NODE */}
-            <div className="w-32 flex flex-col justify-center items-center z-20 shrink-0">
+            <div className="w-32 flex flex-col justify-center items-center z-10">
               <div 
                 ref={userRef}
-                className="w-24 h-24 rounded-full bg-blue-600 border-4 border-blue-100 shadow-xl flex flex-col items-center justify-center text-white z-20"
+                className="w-24 h-24 rounded-full bg-blue-600 border-4 border-blue-100 shadow-xl flex flex-col items-center justify-center text-white z-10"
               >
                 <User size={32} />
-                <span className="text-xs font-bold mt-1">ME</span>
+                <span className="text-xs font-bold mt-1">YOU</span>
               </div>
             </div>
 
             {/* COL 2: CAMPAIGNS */}
-            <div className="w-60 flex flex-col gap-4 justify-center py-10 z-20 shrink-0" 
+            <div className="w-70 flex flex-col gap-4 justify-center py-10 z-10" 
                  style={{ marginLeft: `${LAYOUT.GAP_1}px` }}>
               {campaigns.map((camp) => {
                 const isActive = activeCampaignId === camp.id;
@@ -225,44 +215,35 @@ export default function DonorImpactCircuit({ donorId }: Props) {
                     ref={(el) => { if (el) campaignRefs.current.set(camp.id, el); }}
                     className={`
                       w-full h-20 transition-all duration-500 ease-in-out
-                      ${isDimmed ? 'opacity-30 scale-95 grayscale' : 'opacity-100 scale-100'}
-                    `}
-                  >
+                      ${isDimmed ? 'opacity-40 scale-95 grayscale' : 'opacity-100 scale-100'}`}>
+
                     <CampaignItem 
                       campaign={camp}
                       isActive={isActive} 
-                      onClick={setActiveCampaignId} 
-                    />
+                      onClick={setActiveCampaignId} />
                   </div>
                 );
               })}
             </div>
 
             {/* COL 3: MILESTONES */}
-            <div className="w-80 flex flex-col gap-6 justify-center py-10 z-20 shrink-0" 
-                 style={{ marginLeft: `${LAYOUT.GAP_2}px` }}>
-              {visibleMilestones.map((m) => (
+            <div className="w-80 flex flex-col gap-6 justify-center z-10" style={{ marginLeft: `${LAYOUT.GAP_1}px` }}>
+
+              {visibleMilestones.length > 0 && visibleMilestones.map((m) => (
                 <div 
                   key={m.id} 
                   ref={(el) => { if (el) milestoneRefs.current.set(m.id, el); }}
-                  className="w-full"
-                >
+                  className="w-full">
                   <MilestoneCard 
                     milestone={m} 
                     isTargeted={m.userContribution > 0} 
-                    isCompact={activeCampaignId === null} 
-                  />
+                    isCompact={activeCampaignId === null} />
                 </div>
-              ))}
-              {visibleMilestones.length === 0 && (
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm italic border-2 border-dashed border-gray-100 rounded-xl p-10">
-                  Select a campaign to view impact.
-                </div>
-              )}
+              ))} 
             </div>
 
             {/* SVG LAYER */}
-            <div className="absolute inset-0 pointer-events-none z-10">
+            <div className="absolute inset-0 pointer-events-none">
               <svg className="w-full h-full">
                 {/* User -> Campaigns */}
                 {campaigns.map((camp) => {
