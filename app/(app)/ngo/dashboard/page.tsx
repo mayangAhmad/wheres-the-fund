@@ -1,22 +1,70 @@
 // app/ngo/dashboard/page.tsx
-import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
-import { supabaseAdmin } from "@/lib/supabase/admin"; // Use Admin for direct DB access
 import HomeDashboardContent from "@/components/ngo-dashboard/home/HomeDashboard";
+import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { supabaseAdmin } from "@/lib/supabase/admin"; 
 
-// 1. Create a specific fetch for the dashboard
 async function getDashboardStats(userId: string) {
-  const { data } = await supabaseAdmin
+  // 1. Fetch Campaigns AND their Milestones statuses
+  const { data: campaignsData } = await supabaseAdmin
     .from("campaigns")
-    .select("id, status, collected_amount")
-    .eq("ngo_id", userId); // Fetch all campaigns for this NGO
+    .select(`
+      id, title, status, collected_amount, goal_amount, current_milestone_index,
+      milestones ( milestone_index, status )
+    `)
+    .eq("ngo_id", userId);
 
-  const campaigns = data || [];
+  const campaigns = campaignsData || [];
+  const campaignIds = campaigns.map((c) => c.id);
+
+  // 2. Fetch Real Donors (Count Unique User IDs)
+  let uniqueDonorCount = 0;
+  
+  if (campaignIds.length > 0) {
+    const { data: donations } = await supabaseAdmin
+      .from("donations") 
+      .select("donor_id")
+      .in("campaign_id", campaignIds);
+
+    // Use a Set to count unique donors
+    const uniqueDonors = new Set(donations?.map((d) => d.donor_id));
+    uniqueDonorCount = uniqueDonors.size;
+  }
+
+  // 3. Calculate Real Financials
+  const totalFunds = campaigns.reduce((sum, c) => sum + (Number(c.collected_amount) || 0), 0);
+  const totalGoal = campaigns.reduce((sum, c) => sum + (Number(c.goal_amount) || 0), 0);
+  
+  const completionRateVal = totalGoal > 0 ? (totalFunds / totalGoal) * 100 : 0;
+  const completionRateString = `${Math.round(completionRateVal)}%`;
+
+  // 4. FILTER: Smart Logic for Actionable Items
+  const actionableCampaigns = campaigns
+    .filter(c => {
+      // Must be currently running
+      if (c.status !== 'Ongoing') return false;
+
+      // Find the specific milestone currently active (or waiting)
+      const currentMs = Array.isArray(c.milestones) 
+        ? c.milestones.find((m: any) => m.milestone_index === c.current_milestone_index)
+        : null;
+
+      // Only show if the current milestone needs attention:
+      // - pending_proof: Cap reached, donations paused, waiting for proof
+      // - rejected: Admin rejected the proof, needs fix
+      return currentMs?.status === 'pending_proof' || currentMs?.status === 'rejected';
+    })
+    .map(c => ({
+      id: c.id,
+      title: c.title,
+      current_milestone: c.current_milestone_index || 0
+    }));
 
   return {
-    totalFunds: campaigns.reduce((sum, c) => sum + (Number(c.collected_amount) || 0), 0),
-    activeCampaigns: campaigns.filter(c => c.status === 'Ongoing').length,
-    donors: "120,000+", // Mock or fetch real count
-    completionRate: "87%" // Mock or calc
+    totalFunds: totalFunds,
+    activeCampaigns: campaigns.filter(c => c.status === 'Ongoing').length, 
+    donors: uniqueDonorCount.toLocaleString(),
+    completionRate: completionRateString,
+    actionableCampaigns: actionableCampaigns
   };
 }
 
@@ -24,11 +72,7 @@ export default async function DashboardPage() {
   const user = await getAuthenticatedUser();
   if (!user) return null;
 
-
-  // 2. This fetch happens in parallel with the UI rendering
-  // The 'loading.tsx' skeleton will show while this runs!
   const stats = await getDashboardStats(user.id);
 
-  // 3. Pass stats as props
   return <HomeDashboardContent initialStats={stats} />;
 }

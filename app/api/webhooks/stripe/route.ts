@@ -207,15 +207,23 @@ export async function POST(req: Request) {
             // F. UPDATE CAMPAIGN TOTALS
             const { data: currentCampaign } = await supabaseAdmin
                 .from("campaigns")
-                .select("collected_amount")
+                .select("collected_amount, donations_count")
                 .eq("id", campaignId)
                 .single();
 
             const newTotal = (currentCampaign?.collected_amount || 0) + amountRM;
+            const newCount = (currentCampaign?.donations_count || 0) + 1;
+            
+            // Capture the current time in ISO format
+            const now = new Date().toISOString(); 
 
             await supabaseAdmin
                 .from("campaigns")
-                .update({ collected_amount: newTotal })
+                .update({ 
+                    collected_amount: newTotal,
+                    donations_count: newCount,
+                    last_donation_at: now // <--- Update timestamp here
+                })
                 .eq("id", campaignId);
 
             console.log("🎉 Webhook Process Complete!");

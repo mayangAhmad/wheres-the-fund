@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useNgoUser } from "@/context/NgoUserContext";
 import { Home, Heart, Bell, Settings, PlusCircle, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -20,10 +21,22 @@ const sidebarLinks = [
 
 export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useNgoUser();
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
   const profileImage = user?.avatar_url || "/placeholder.jpg"; 
+
+  const isProfileComplete = user?.description && user?.website_url;
+
+  const handleCreateClick = (e: React.MouseEvent) => {
+    // If incomplete, stop navigation and redirect to settings
+    if (!isProfileComplete) {
+      e.preventDefault();
+      toast.error("Please complete your Organization Profile (Bio & Website) first.");
+      router.push("/ngo/settings");
+    }
+  };
 
   return (
     <aside 
@@ -64,6 +77,7 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
         {/* Publish Button */}
         <Link 
           href="/ngo/campaigns/create"
+          onClick={handleCreateClick}
           className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4"} py-3 rounded-lg transition-all mb-6 font-medium whitespace-nowrap
             ${pathname === "/ngo/campaigns/create" 
               ? "bg-orange-600 text-white shadow-md" 

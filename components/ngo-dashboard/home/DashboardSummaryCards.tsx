@@ -27,7 +27,9 @@ interface Props {
 
 export function DashboardSummaryCards({ stats }: Props) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 px-4 lg:px-6">
+    // 👇 REMOVED 'px-4 lg:px-6' from here.
+    // Now it will stretch to match the exact width of your Header and Action Card.
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Funds Raised</CardDescription>
