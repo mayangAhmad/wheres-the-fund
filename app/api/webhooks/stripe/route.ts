@@ -197,6 +197,18 @@ export async function POST(req: Request) {
                         .update({ on_chain_tx_hash: tx.hash, status: "completed" })
                         .eq("id", donationRecord.id);
 
+                    const newTotalForMilestone = currentRaised + allocation;
+
+                    // If we reached or exceeded the target
+                    if (newTotalForMilestone >= m.target_amount) {
+                        console.log(`🔒 Milestone ${m.milestone_index} capped! Updating status to pending_proof...`);
+                        
+                        await supabaseAdmin
+                            .from("milestones")
+                            .update({ status: "pending_proof" }) 
+                            .eq("id", m.id);
+                    }
+
                     // 5. UPDATE LOOP
                     remainingToAllocate -= allocation;
                     currentNonce++;
