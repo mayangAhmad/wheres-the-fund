@@ -17,18 +17,18 @@ interface PicData {
   contact: string;
 }
 
-// UPDATE: Added proof fields to match the 'milestones' table
+// UPDATE: Added 'pending_proof' and 'completed' to status to prevent them being treated as locked/errors
 interface Milestone {
   id: string;
   milestone_index: number;
   title: string;
   description: string;
-  status: 'locked' | 'active' | 'pending_review' | 'approved' | 'rejected';
+  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'completed';
   funds_allocated_percent: number;
   target_amount: number;
-  proof_description?: string; // Added
-  proof_images?: string[];    // Added
-  proof_invoices?: string[];  // Added
+  proof_description?: string; 
+  proof_images?: string[];    
+  proof_invoices?: string[];  
 }
 
 interface ExtendedData {

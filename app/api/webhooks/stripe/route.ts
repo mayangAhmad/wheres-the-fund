@@ -197,6 +197,18 @@ export async function POST(req: Request) {
                         .update({ on_chain_tx_hash: tx.hash, status: "completed" })
                         .eq("id", donationRecord.id);
 
+                    const newTotalForMilestone = currentRaised + allocation;
+
+                    // If we reached or exceeded the target
+                    if (newTotalForMilestone >= m.target_amount) {
+                        console.log(`🔒 Milestone ${m.milestone_index} capped! Updating status to pending_proof...`);
+
+                        await supabaseAdmin
+                            .from("milestones")
+                            .update({ status: "pending_proof" })
+                            .eq("id", m.id);
+                    }
+
                     // 5. UPDATE LOOP
                     remainingToAllocate -= allocation;
                     currentNonce++;
@@ -207,15 +219,23 @@ export async function POST(req: Request) {
             // F. UPDATE CAMPAIGN TOTALS
             const { data: currentCampaign } = await supabaseAdmin
                 .from("campaigns")
-                .select("collected_amount, title")
+                .select("collected_amount, donations_count, title")
                 .eq("id", campaignId)
                 .single();
 
             const newTotal = (currentCampaign?.collected_amount || 0) + amountRM;
+            const newCount = (currentCampaign?.donations_count || 0) + 1;
+
+            // Capture the current time in ISO format
+            const now = new Date().toISOString();
 
             await supabaseAdmin
                 .from("campaigns")
-                .update({ collected_amount: newTotal })
+                .update({
+                    collected_amount: newTotal,
+                    donations_count: newCount,
+                    last_donation_at: now // <--- Update timestamp here
+                })
                 .eq("id", campaignId);
 
             await supabaseAdmin

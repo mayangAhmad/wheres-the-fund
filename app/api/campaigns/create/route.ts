@@ -46,6 +46,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Only NGOs can create campaigns" }, { status: 403 });
     }
 
+    const { data: profile } = await supabaseAdmin
+      .from("ngo_profiles")
+      .select("description, website_url")
+      .eq("ngo_id", user.id)
+      .single();
+
+    if (!profile || !profile.description || !profile.website_url) {
+      return NextResponse.json({ 
+        error: "Profile Incomplete. Please add a Bio and Website URL in Settings." 
+      }, { status: 403 });
+    }
+
     const body: RequestBody = await req.json();
 
     // 2. Get Wallet Profile

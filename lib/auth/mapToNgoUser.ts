@@ -8,10 +8,11 @@ export async function mapToNgoUser(user: SupabaseUser): Promise<NgoUser> {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select(`
-      id, name, email, wallet_address, kms_key_id, role,
+      id, name, email, wallet_address, kms_key_id, role, created_at,
       ngo_profiles!inner ( 
       ssm_number,
       stripe_account_id,
+      description, website_url,
       avatar_url )
     `)
     .eq("id", user.id)
@@ -28,10 +29,13 @@ export async function mapToNgoUser(user: SupabaseUser): Promise<NgoUser> {
     email: data.email,
     wallet_address: data.wallet_address,
     kms_key_id: data.kms_key_id,
+    created_at: data.created_at,
     role: data.role,
     ssm_number: profile.ssm_number,
     stripe_account_id: profile.stripe_account_id,
-    campaigns: [], // ⚡️ Return empty array here. Layout stays fast!
+    campaigns: [], 
+    description: profile.description,
+    website_url: profile.website_url,
     avatar_url: profile.avatar_url,
   } as NgoUser;
 }

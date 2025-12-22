@@ -12,7 +12,7 @@ export interface Milestone {
   milestone_index: number;
   title: string;
   description: string;
-  status: 'locked' | 'active' | 'pending_review' | 'approved' | 'rejected';
+  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'completed';  
   funds_allocated_percent: number;
   target_amount: number;
   proof_description?: string;
@@ -38,11 +38,13 @@ const formatCurrency = (amount: number) => {
 
 export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }: MilestoneCardProps) {
   const isLocked = ms.status === 'locked';
-  const isApproved = ms.status === 'approved';
+  
+  // 1. FIX: Treat 'completed' as approved for UI purposes
+  const isApproved = ms.status === 'approved' || ms.status === 'completed';
   const isUnderReview = ms.status === 'pending_review';
 
-  // Privacy Check: Only show proof details if approved
-  const showProofContent = isApproved;
+  // 2. FIX: Ensure privacy check allows 'completed' to show proof
+  const showProofContent = isApproved; 
 
   // Dynamic Styles Logic
   let statusColor = "bg-gray-100 text-gray-500 border-gray-200";
@@ -52,13 +54,18 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
   if (isApproved) {
     statusColor = "bg-green-100 text-green-700 border-green-200";
     StatusIcon = CheckCircle2;
-    statusLabel = "Completed";
+    statusLabel = "Completed"; // Or 'Paid Out' if you prefer
   } else if (ms.status === 'active') {
     statusColor = "bg-blue-100 text-blue-700 border-blue-200";
     StatusIcon = Clock;
     statusLabel = "In Progress";
+  } else if (ms.status === 'pending_proof') {
+     // Optional: Add a specific label for this state so it doesn't look locked
+     statusColor = "bg-orange-50 text-orange-600 border-orange-200";
+     StatusIcon = AlertCircle;
+     statusLabel = "Waiting for Proof";
   } else if (isUnderReview) {
-    statusColor = "bg-orange-100 text-orange-700 border-orange-200";
+    statusColor = "bg-purple-100 text-purple-700 border-purple-200"; // Changed color to distinguish from 'pending_proof'
     StatusIcon = AlertCircle;
     statusLabel = "Under Audit";
   } else if (ms.status === 'rejected') {
@@ -127,7 +134,7 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                     </p>
                 </div>
 
-                {/* B. Progress Report (PRIVACY PROTECTED) */}
+                {/* B. Progress Report */}
                 <div>
                     <h5 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2 mb-2">
                         <TrendingUp size={14} className={isLocked ? "text-gray-400" : "text-blue-500"}/> Progress Report
@@ -138,14 +145,12 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                           <Lock size={12} /> Pending start of this phase.
                       </div>
                     ) : showProofContent && ms.proof_description ? (
-                      // 1. Show Proof (Approved)
                       <div className="relative">
                         <p className="text-blue-900 text-sm leading-relaxed bg-blue-50/50 p-3 rounded-lg border border-blue-100 animate-in fade-in">
                             {ms.proof_description}
                         </p>
                       </div>
                     ) : isUnderReview ? (
-                      // 2. Show Placeholder (Under Review)
                       <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center gap-3">
                          <div className="bg-orange-100 p-2 rounded-full">
                             <Clock className="text-orange-600 w-4 h-4" />
@@ -156,14 +161,13 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                          </div>
                       </div>
                     ) : (
-                      // 3. No Update Yet
                       <div className="text-xs text-gray-400 italic pl-1">
                         No written update provided yet.
                       </div>
                     )}
                 </div>
 
-                {/* C. Gallery (PRIVACY PROTECTED) */}
+                {/* C. Gallery */}
                 <div>
                     <h5 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2 mb-3">
                         <Camera size={14} className="text-orange-500"/> Activity Gallery
@@ -178,7 +182,6 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                             ))}
                         </div>
                     ) : isUnderReview && ms.proof_images && ms.proof_images.length > 0 ? (
-                        // Hidden Gallery Placeholder
                         <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 rounded-lg p-6 flex flex-col items-center justify-center text-center">
                             <Camera size={24} className="text-orange-300 mb-2" />
                             <span className="text-sm font-medium text-orange-700">Photos under review</span>
@@ -194,7 +197,7 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                     )}
                 </div>
 
-                {/* D. Financials (PRIVACY PROTECTED) */}
+                {/* D. Financials */}
                 <div>
                     <h5 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2 mb-3">
                         <FileText size={14} className="text-green-600"/> Financial Records
