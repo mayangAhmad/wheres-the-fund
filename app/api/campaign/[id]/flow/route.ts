@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         //fetch last 8 donations
         const { data: recentDonations, error: dError } = await supabaseAdmin
             .from('donations')
-            .select(`id, donor_id, amount, created_at, milestone_index, users (id, name)`)
+            .select(`id, donor_id, amount, created_at, milestone_index`)
             .eq('campaign_id', campaignId)
             .order('created_at', { ascending: false })
             .limit(8);
@@ -58,7 +58,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
             return {
                 id: d.id,
-                name: d.users.name,
+                name: "Anonymous",
                 amount: `RM ${d.amount}`,
                 targetMilestoneId: linkedMilestone?.id || "", //id milestone for specific donation
                 time: formatDistanceToNow(new Date(d.created_at), { addSuffix: true }).replace("about", ""),

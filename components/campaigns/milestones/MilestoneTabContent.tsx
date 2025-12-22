@@ -35,13 +35,18 @@ export default function MilestoneTabContent({ milestones = [] }: Props) {
         <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 hidden md:block" />
 
         {milestones.map((ms, index) => (
-          <MilestoneCard 
-            key={ms.id}
-            milestone={ms}
-            index={index}
-            isOpen={expandedIndex === index}
-            onToggle={() => toggleAccordion(index)}
-          />
+          <div 
+            key={ms.id} 
+            id={`milestone-${ms.id}`}  
+            className="scroll-mt-32 relative" 
+          >
+            <MilestoneCard 
+              milestone={ms}
+              index={index}
+              isOpen={expandedIndex === index}
+              onToggle={() => toggleAccordion(index)}
+            />
+          </div>
         ))}
       </div>
     </div>

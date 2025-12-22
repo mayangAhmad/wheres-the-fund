@@ -207,7 +207,7 @@ export async function POST(req: Request) {
             // F. UPDATE CAMPAIGN TOTALS
             const { data: currentCampaign } = await supabaseAdmin
                 .from("campaigns")
-                .select("collected_amount")
+                .select("collected_amount, title")
                 .eq("id", campaignId)
                 .single();
 
@@ -217,6 +217,13 @@ export async function POST(req: Request) {
                 .from("campaigns")
                 .update({ collected_amount: newTotal })
                 .eq("id", campaignId);
+
+            await supabaseAdmin
+                .from("notifications")
+                .insert({
+                    user_id: donorId,
+                    message: `Your donation of RM${amountRM} to Campaign ${currentCampaign?.title} has been processed successfully!`,
+                });
 
             console.log("🎉 Webhook Process Complete!");
 

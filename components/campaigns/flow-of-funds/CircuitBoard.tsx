@@ -39,6 +39,7 @@ export default function CircuitBoard({ campaignId }: Props) {
         if (!res.ok) throw new Error("Failed to fetch");
 
         const data = await res.json();
+      
 
         if(data.milestones) setMilestones(data.milestones);
         if(data.donors) setDonors(data.donors);
@@ -90,11 +91,20 @@ export default function CircuitBoard({ campaignId }: Props) {
   }, [donors, milestones, loading]);
 
   const getLineColor = (milestoneId: string) => {
-    const m = milestones.find(m => m.id === milestoneId);
-    if (m?.status === 'approved' || m?.status === 'pending_review') return '#22c55e';
-    if (m?.status === 'active') return '#f97316';
-    return '#9ca3af';
-  };
+  const m = milestones.find(m => m.id === milestoneId);
+  if (!m) return '#e5e7eb'; 
+
+  if (m.currentAmount >= m.targetAmount) {
+    return '#22c55e';
+  } 
+  else if (m.currentAmount > 0) {
+    return '#f97316'; 
+  } 
+  else {
+    return '#d1d5db';
+  }
+};
+
 
   if (loading) {
     return (
@@ -145,9 +155,18 @@ export default function CircuitBoard({ campaignId }: Props) {
               <div className='text-gray-400 text-sm italic text-center'>No donations yet.</div>
             ): (
               donors.map((d) => {
-                //index for that milestone id
-                const targetMilestone = milestones.find(m => m.id === d.targetMilestoneId);
-                const status = targetMilestone ? targetMilestone.status : 'active';
+                const m = milestones.find((m) => m.id === d.targetMilestoneId);
+
+                let statusString = 'locked';
+
+                if (m) {
+                  if (m.currentAmount >= m.targetAmount){
+                    statusString = 'approved';
+                  } else if (m.currentAmount > 0) {
+                    statusString = 'active';
+                  }
+                }
+                
                 
                 return (
                   <div 
@@ -157,8 +176,8 @@ export default function CircuitBoard({ campaignId }: Props) {
                   >
                     <DonorItem 
                       donor={d} 
-                      isActive={activeDonorId === d.id} 
-                      status={status} 
+                      isActive={activeDonorId === d.id}
+                      status={statusString}
                       onClick={setActiveDonorId} 
                     />
                   </div>
@@ -186,6 +205,7 @@ export default function CircuitBoard({ campaignId }: Props) {
                     color={getLineColor(d.targetMilestoneId)}
                     delay={0}
                   />
+                  
                 );
               })}
 
@@ -193,8 +213,6 @@ export default function CircuitBoard({ campaignId }: Props) {
               {milestones.map((m) => {
                  const endY = milestoneCoords[m.id];
                  if (!endY) return null;
-                 
-                 if (m.status === 'locked') return null;
 
                  return (
                    <ConnectionPath 
@@ -215,7 +233,15 @@ export default function CircuitBoard({ campaignId }: Props) {
             className="absolute left-0 right-0 z-10 flex justify-center pointer-events-none" 
             style={{ top: centerY - 50 }} 
           >
-             <SmartContractNode isActive={!!activeDonorId} /> 
+             <div className={`
+              w-24 h-24 rounded-full flex items-center justify-center border-4 
+              transition-all duration-700 bg-white relative
+              ${'border-blue-500 shadow-[0_0_40px_rgba(249,115,22,0.3)] scale-110'  }
+            `}>
+              <div className="text-center">
+                <div className="text-[12px] text-blue-600 font-bold mt-1 tracking-wider leading-tight">SMART<br/>CONTRACT</div>
+              </div>
+            </div> 
           </div>
 
           {/* 4. RIGHT COLUMN: MILESTONES */}

@@ -21,7 +21,7 @@ export default function CheckoutForm({ amount }: { amount: number }) {
             elements,
             confirmParams: {
                 // Where to go after payment succeeds
-                return_url: `${window.location.origin}/donation/success`,
+                return_url: `${window.location.origin}/donor/success-donation`,
             },
         });
 

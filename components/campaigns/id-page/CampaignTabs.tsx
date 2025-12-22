@@ -7,6 +7,7 @@ import { Milestone } from "../milestones/MilestoneCard";
 import CircuitBoard from "../flow-of-funds/CircuitBoard";
 import HistoryTable from "@/components/donor-dashboard/history/HistoryTable";
 import createClient from '@/lib/supabase/client';
+import { useSearchParams } from "next/navigation";
 
 
 // Types
@@ -48,6 +49,31 @@ export default function CampaignTabs({ campaignId, description, background, prob
 
   const [transaction, setTransaction] = useState<any[]>([]);
   const [loadingTransaction, setLoadingTransaction] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    console.log("tab",tabParam);
+
+    if (tabParam === "milestone") {
+      setActive("Milestones");
+
+      const hash = window.location.hash; 
+      if (hash) {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            clearInterval(interval);
+          }
+          
+          attempts++;
+          if (attempts > 10) clearInterval(interval); 
+        }, 100);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (active === "Transaction Log" && transaction.length === 0) {
@@ -74,6 +100,7 @@ export default function CampaignTabs({ campaignId, description, background, prob
 
       fetchTransactions();
     }
+
   }, [active, campaignId, transaction.length]);
 
   return (

@@ -22,8 +22,8 @@ export async function POST(req: Request) {
 
         if (!accountId) {
             const account = await stripe.accounts.create({
-                type: "standard", // 'express' is best for platforms
-                country: "MY",   // Malaysia
+                type: "standard",
+                country: "MY",
                 email: user.email,
                 capabilities: {
                     card_payments: { requested: true },
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
         const accountLink = await stripe.accountLinks.create({
             account: accountId,
-            refresh_url: `${baseUrl}/ngo-stripe/connect-refresh`, // If they click cancel/reload
+            refresh_url: `${baseUrl}/ngo/stripe-refresh`, // If they click cancel/reload
             return_url: `${baseUrl}/ngo/dashboard?payment_setup=success`, // When they finish
             type: "account_onboarding",
         });

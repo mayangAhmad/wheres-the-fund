@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import createClient from "@/lib/supabase/client";
-import { Bell, Check, CheckCheck, Clock, MailOpen, ArrowRight} from "lucide-react";
+import { Bell, CheckCheck, Clock, MailOpen, ArrowRight} from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,7 +22,7 @@ interface NotificationClientProps {
 export default function NotificationClient({ 
   initialNotifications, 
   userId,
-  mode = "full"
+  mode
 }: NotificationClientProps) {
  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications || []);  
  const supabase = createClient();
@@ -53,7 +53,6 @@ export default function NotificationClient({
 
   // 2. HANDLE MARK AS READ
   const handleMarkAsRead = async (id: string) => {
-    // Optimistic Update (Update UI instantly)
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
@@ -80,7 +79,7 @@ export default function NotificationClient({
            <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
         ) : (
            // Full Page Header
-           <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
+           <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-3 py-1 rounded-md">
              <Bell className="w-4 h-4" />
              <span className="text-sm font-medium">You have {unreadCount} unread messages</span>
            </div>
@@ -96,7 +95,7 @@ export default function NotificationClient({
         )}
         
         {mode === "widget" && (
-           <Link href="/dashboard/notifications" className="text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center">
+           <Link href="/donor/notifications" className="text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center">
              View All <ArrowRight className="w-3 h-3 ml-1" />
            </Link>
         )}

@@ -1,6 +1,8 @@
 import { Calendar, Edit, Wallet, Mail, User, Phone,TrendingUp, Heart, DollarSign } from "lucide-react";
+import Link from "next/link";
 import { calculateBadges, calculateImpactLevel } from "./ProfileBadges";
 import { BaseUser } from "@/types/ngo";
+import { useRouter } from "next/navigation";
 
 interface DonorStats {
     amount: number;
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export function Profile({ profile, stats }: Props) {
+    const router = useRouter();
     const totalAmounts = stats 
     ? stats.reduce((sum, record) => sum + record.amount, 0) 
     : 0;
@@ -74,11 +77,13 @@ export function Profile({ profile, stats }: Props) {
                     </div>
                 </div>
                 
-                    <button className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2">
-                    <Edit className="w-3.5 h-3.5" /> Edit Profile
-                </button>
-                
-                
+                <Link 
+                    href="/donor/settings" 
+                    className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2"
+                    >
+                        <Edit className="w-3.5 h-3.5" /> 
+                        Edit Profile
+                    </Link>
             </div>
 
             {/* 2. MIDDLE SECTION: Stats */}

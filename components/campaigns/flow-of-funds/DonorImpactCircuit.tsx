@@ -49,47 +49,40 @@ export default function DonorImpactCircuit({ donorId }: Props) {
   useEffect(() => {
     if (!donorId) return;
 
+    let isMounted = true;
+
     const fetchData = async () => {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), LAYOUT.FETCH_TIMEOUT_MS);
+        setLoading(true);
 
         const res = await fetch(`/api/donor/${donorId}/impact`, {
-          method: 'GET',
-          signal: controller.signal,
+          method: 'GET'
         });
 
-        clearTimeout(timeoutId);
-
         if (!res.ok) {
-          throw new Error(
-            res.status === 404 
-              ? "Donor impact data not found"
-              : res.status === 500
-              ? "Server error while fetching impact data"
-              : `Failed to fetch impact data (${res.status})`
-          );
+          throw new Error("Failed to fetch impact data.");
         }
 
         const data = await res.json();
         
-        if (!data || typeof data !== 'object') {
-          throw new Error("Invalid response format from server");
+        if (isMounted) {
+          if (data.campaigns) setCampaigns(data.campaigns);
+          if (data.milestones) setMilestones(data.milestones);
+          setError(null);
         }
 
-        if (data.campaigns) setCampaigns(data.campaigns);
-        if (data.milestones) setMilestones(data.milestones);
-        setError(null);
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      } catch (err: any) {
+        if (!isMounted) return;
         console.error("Impact Graph Error:", err);
-        setError(errorMessage);
+        setError(err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => { isMounted = false; };
   }, [donorId]);
 
   // Measure Logic

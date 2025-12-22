@@ -69,7 +69,7 @@ export default function HistoryTable({ donations, mode }:  Props) {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-center justify-center">
                       <span className="text-sm font-medium text-gray-900 ">
-                        {(donation as any).users.name || "Anonymous Donor"}
+                        Anonymous Donor
                       </span>
                       <div className="text-xs text-gray-500 font-mono text-center">
                         ID: {(donation as any).users?.id.slice(0, 8)}...

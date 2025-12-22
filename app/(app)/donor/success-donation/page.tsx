@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, ArrowRight, Loader2, Info } from "lucide-react";
+import { CheckCircle, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function SuccessContent() {
@@ -11,7 +11,7 @@ function SuccessContent() {
   const paymentIntentId = searchParams.get("payment_intent");
   const redirectStatus = searchParams.get("redirect_status");
 
-  // If Stripe didn't say "succeeded", something went wrong.
+
   if (redirectStatus !== "succeeded") {
     return (
       <div className="flex flex-col items-center">
@@ -46,7 +46,6 @@ function SuccessContent() {
       
       <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 text-left max-w-md w-full">
         <h3 className="font-semibold text-blue-900 flex items-center gap-2 mb-2">
-          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
           Processing on Blockchain...
         </h3>
         <p className="text-sm text-blue-800/80">

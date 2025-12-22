@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 // --- TYPES ---
 export interface CircuitMilestone {
@@ -22,33 +23,38 @@ interface Props {
 export default function MilestoneCard({ milestone, isTargeted, isCompact = false }: Props) {
   const percentage = Math.min((milestone.currentAmount / milestone.targetAmount) * 100, 100);
 
-  // --- STYLE LOGIC ---
-  let cardStyle = "border-gray-200 bg-white opacity-90";
-  let progressBarColor = "bg-gray-300";
-  let statusBadge = null;
+  const findStatusConfig = () => {
+    if (milestone.currentAmount >= milestone.targetAmount) {
+      return {
+        cardStyle: isTargeted 
+          ? "border-green-500 ring-2 ring-green-100 shadow-xl bg-green-50" 
+          : "border-green-200 bg-green-50/50",
+        progressBarColor: "bg-green-500",
+        statusBadge: <span className="text-[10px] bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">COMPLETED</span>,
+        raisedTextColor: "text-green-700"
+      };
+    } else if (milestone.currentAmount > 0 && milestone.currentAmount < milestone.targetAmount) {
+      return {
+        cardStyle: isTargeted 
+          ? "border-orange-500 ring-2 ring-orange-100 shadow-xl bg-white" 
+          : "border-orange-200 bg-orange-50/50",
+        progressBarColor: "bg-orange-500",
+        statusBadge: <span className="text-[10px] bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full font-bold animate-pulse">ACTIVE</span>,
+        raisedTextColor: "text-orange-500"
+      };
+    } else {
+      return {
+        cardStyle: "border-gray-100 bg-gray-50 opacity-50 grayscale",
+        progressBarColor: "bg-gray-300",
+        statusBadge: <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-bold">LOCKED</span>,
+        raisedTextColor: "text-gray-500"
+      };
+    }
+  };
 
-  if (milestone.status === 'completed' || milestone.status === 'approved' || milestone.status === 'pending_review') {
-    cardStyle = isTargeted 
-      ? "border-green-500 ring-2 ring-green-100 shadow-xl bg-green-50" 
-      : "border-green-200 bg-green-50/50";
-    progressBarColor = "bg-green-500";
-    
-    const badgeText = milestone.status === 'pending_review' ? "PENDING REVIEW" : "COMPLETED";
-    statusBadge = <span className="text-[10px] bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">{badgeText}</span>;
-  } 
-  else if (milestone.status === 'active') {
-    cardStyle = isTargeted 
-      ? "border-orange-500 ring-2 ring-orange-100 shadow-xl bg-white" 
-      : "border-orange-200 bg-white";
-    progressBarColor = "bg-orange-500";
-    statusBadge = <span className="text-[10px] bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-bold animate-pulse">ACTIVE</span>;
-  } 
-  else if (milestone.status === 'locked') {
-    cardStyle = "border-gray-100 bg-gray-50 opacity-50 grayscale";
-    statusBadge = <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-bold">LOCKED</span>;
-  }
+  const { cardStyle, progressBarColor, statusBadge, raisedTextColor } = findStatusConfig();
 
-  // --- SCENARIO 1: COMPACT VIEW (Donor Dashboard - Default State) ---
+  //COMPACT VIEW (Donor Dashboard - Default State)
   if (isCompact) {
     return (
       <div className={`p-4 rounded-lg border transition-all duration-500 relative flex flex-col justify-center shadow-sm w-full ${cardStyle}`}>
@@ -66,9 +72,10 @@ export default function MilestoneCard({ milestone, isTargeted, isCompact = false
     );
   }
 
-  // --- SCENARIO 2: FULL VIEW (Public Page OR Donor Dashboard - Clicked State) ---
+  //FULL VIEW (Public Page OR Donor Dashboard - Clicked State) 
   return (
-    <div className={`p-4 rounded-xl border transition-all duration-500 relative flex flex-col justify-center shadow-sm w-full ${cardStyle}`}>
+    <Link href={`/campaigns/${milestone.campaignId}?tab=milestone#milestone-${milestone.id}`} className="block w-full">
+      <div className={`p-4 rounded-xl border transition-all duration-500 relative flex flex-col justify-center shadow-sm w-full ${cardStyle}`}>
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="font-semibold text-gray-800 line-clamp-1">{milestone.name}</h4>
@@ -89,7 +96,7 @@ export default function MilestoneCard({ milestone, isTargeted, isCompact = false
       </div>
 
       <div className="flex justify-between text-xs font-mono font-medium">
-        <span className={milestone.status === 'active' ? 'text-orange-600' : 'text-gray-500'}>
+        <span className={raisedTextColor}>
           Raised: RM {milestone.currentAmount.toLocaleString()}
         </span>
         <span className="text-gray-400">{percentage.toFixed(0)}%</span>
@@ -103,5 +110,7 @@ export default function MilestoneCard({ milestone, isTargeted, isCompact = false
         </div>
       )}
     </div>
+    </Link>
+    
   );
 }

@@ -20,7 +20,7 @@ export default function HomeDashboard({ profile, notifications, stats }: Dashboa
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <h1 className="text-2xl font-bold">Welcome, {profile.email}!</h1>
+      <h1 className="text-2xl font-bold">Welcome, {profile.name}! </h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         <div className="lg:col-span-2 h-full">
