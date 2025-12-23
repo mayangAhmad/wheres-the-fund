@@ -1,52 +1,52 @@
-// hooks/useFilteredCampaigns.ts
-
 import { useMemo } from 'react'
-import { useCampaigns } from './useCampaigns' // Import the consumer hook
+import { useCampaigns } from './useCampaigns'
 import { Campaign } from '@/context/CampaignsContext'
 
 interface FilterParams {
-  filterStatus: string // 'All Status', 'Ongoing', 'Completed'
-  filterCategory: string // 'All Campaigns', 'standard', 'disaster'
-  searchTerm: string // Debounced search term
+  filterStatus: string // From UI: 'All Status', 'Ongoing', 'Completed'
+  filterCategory: string 
+  searchTerm: string 
 }
 
-// 🌟 New dedicated hook
 export const useFilteredCampaigns = ({ filterStatus, filterCategory, searchTerm }: FilterParams) => {
-  // Use the global context hook (which contains ALL ongoing campaigns)
-  const { campaigns: allOngoingCampaigns, loading, refetch } = useCampaigns()
+  const { campaigns: allCampaigns, loading, refetch } = useCampaigns()
   
-  // Use useMemo to re-filter the list only when the inputs change
   const filteredCampaigns = useMemo(() => {
-    let result: Campaign[] = allOngoingCampaigns
+    let result: Campaign[] = allCampaigns
 
-    // 1. Apply Status Filter
+    // 1. Status Filter - Mapping UI to DB Enums
     if (filterStatus !== 'All Status') {
-      // 🌟 Best Practice: Normalize status for consistent filtering
-      const statusValue = filterStatus.toLowerCase() 
-      result = result.filter(c => c.status?.toLowerCase() === statusValue)
+      result = result.filter(c => {
+        if (filterStatus === 'Ongoing') {
+          return c.status === 'Ongoing';
+        }
+        
+        if (filterStatus === 'Completed') {
+          // ✅ Map UI label "Completed" to both Successful and Expired states
+          return c.status === 'Completed' || c.status === 'Closed';
+        }
+        
+        return false;
+      });
     }
 
-    // 2. Apply Category Filter
+    // 2. Category Filter (Case-insensitive)
     if (filterCategory !== 'All Campaigns') {
       const categoryValue = filterCategory.toLowerCase()
       result = result.filter(c => c.category?.toLowerCase() === categoryValue)
     }
 
-    // 3. Apply Search Term Filter
+    // 3. Search Filter
     if (searchTerm) {
-      const lowerCaseSearch = searchTerm.toLowerCase()
+      const search = searchTerm.toLowerCase()
       result = result.filter(c => 
-        // Search by title OR NGO name
-        c.title.toLowerCase().includes(lowerCaseSearch) ||
-        c.ngo_name?.toLowerCase().includes(lowerCaseSearch)
+        c.title.toLowerCase().includes(search) ||
+        c.ngo_name?.toLowerCase().includes(search)
       )
     }
 
-    // Note: Since allOngoingCampaigns are already sorted by 'created_at' from the Provider,
-    // we don't need to re-sort here.
-
     return result
-  }, [allOngoingCampaigns, filterStatus, filterCategory, searchTerm])
+  }, [allCampaigns, filterStatus, filterCategory, searchTerm])
 
   return { filteredCampaigns, loading, refetch }
 }

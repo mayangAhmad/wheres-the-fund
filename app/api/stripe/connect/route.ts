@@ -12,6 +12,13 @@ export async function POST(req: Request) {
     try {
         const user = await getAuthenticatedUser();
 
+        if (!user) {
+            return NextResponse.json(
+                { error: "Unauthorized: You must be logged in." },
+                { status: 401 }
+            );
+        }
+
         const { data: profile } = await supabaseAdmin
             .from("ngo_profiles")
             .select("stripe_account_id")

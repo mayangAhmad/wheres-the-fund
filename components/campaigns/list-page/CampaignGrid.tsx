@@ -9,6 +9,7 @@ interface CampaignGridProps {
   filterStatus: string
   filterCategory: string 
   searchTerm: string
+  onReset: () => void
 }
 
 // Reusable Grid Class to ensure Skeleton and Content match exactly
@@ -38,6 +39,7 @@ export default function CampaignGrid({
   filterStatus,
   filterCategory,
   searchTerm,
+  onReset,
 }: CampaignGridProps) {
   
   const { filteredCampaigns, loading } = useFilteredCampaigns({
@@ -55,7 +57,7 @@ export default function CampaignGrid({
       <div className="py-20 text-center text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
         <p className="text-lg">No campaigns found matching your criteria.</p>
         <button 
-          onClick={() => window.location.reload()} 
+          onClick={onReset} 
           className="mt-2 text-orange-600 hover:underline text-sm"
         >
           Clear filters

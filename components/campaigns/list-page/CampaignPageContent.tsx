@@ -160,10 +160,15 @@ export default function CampaignPageContent() {
       {/* CONTENT AREA */}
       <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[500px]">
         <CampaignGrid
-          filterStatus={filterStatus}    
-          filterCategory={filterCategory}
-          searchTerm={debouncedSearchTerm}       
-        />
+            filterStatus={filterStatus}    
+            filterCategory={filterCategory}
+            searchTerm={debouncedSearchTerm}       
+            onReset={() => {
+              setFilterStatus('All Status');
+              setFilterCategory('All Campaigns');
+              setInputText('');
+            }}
+          />
       </section>
 
     </main>

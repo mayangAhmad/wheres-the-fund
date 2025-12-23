@@ -5,13 +5,20 @@ import * as React from "react";
 interface AnimatedProgressBarProps {
   currentAmount: number;
   targetAmount: number;
+  // 1. Updated to allow null or optional to match your database/context
+  status?: string | null; 
 }
 
-export function AmountProgress({ currentAmount, targetAmount }: AnimatedProgressBarProps) {
+// 2. Destructure 'status' from props here
+export function AmountProgress({ currentAmount, targetAmount, status }: AnimatedProgressBarProps) {
   const [progress, setProgress] = React.useState(0);
+  
   // Prevent division by zero
   const validTarget = targetAmount > 0 ? targetAmount : 1; 
   const targetPercentage = Math.min((currentAmount / validTarget) * 100, 100);
+
+  // 3. Logic for the color change
+  const isFinished = status === 'Completed' || status === 'Closed';
 
   React.useEffect(() => {
     const startTime = Date.now();
@@ -33,9 +40,12 @@ export function AmountProgress({ currentAmount, targetAmount }: AnimatedProgress
   }, [targetPercentage]); 
 
   return (
-    <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
       <div 
-        className="bg-orange-500 h-full transition-all ease-out" 
+        // 4. Added conditional color: bg-orange-700 for finished, bg-orange-500 for active
+        className={`h-full transition-all ease-out rounded-full ${
+          isFinished ? 'bg-orange-700' : 'bg-orange-500'
+        }`} 
         style={{ width: `${progress}%` }}
       />
     </div>

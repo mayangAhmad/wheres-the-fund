@@ -1,8 +1,9 @@
-//context/CampaignsContext.tsx
-
 'use client'
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import createClient from '@/lib/supabase/client'
+
+// 🌟 Use a specific type for the Enum to prevent typos
+export type CampaignStatus = 'Ongoing' | 'Completed' | 'Closed' | 'Creating' | 'Failed' | 'Expired';
 
 export type Campaign = {
   id: string
@@ -13,7 +14,7 @@ export type Campaign = {
   image_url: string | null
   goal_amount: number
   collected_amount: number
-  status: string | null
+  status: CampaignStatus | null
   end_date: string | null
   created_at: string | null
 }
@@ -31,13 +32,16 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
 
-  const fetchAllOngoingCampaigns = useCallback(async () => {
+  // ✅ These are the statuses we want to show on the public browse page
+  const VISIBLE_STATUSES: CampaignStatus[] = ['Ongoing', 'Completed', 'Closed'];
+
+  const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('status', 'Ongoing')
+        .in('status', VISIBLE_STATUSES) 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -50,7 +54,7 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [supabase]);
 
   useEffect(() => {
-    fetchAllOngoingCampaigns();
+    fetchCampaigns();
 
     const channel = supabase
       .channel('public:campaigns')
@@ -60,14 +64,14 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newCampaign = payload.new as Campaign;
-            if (newCampaign.status === 'Ongoing') {
+            if (VISIBLE_STATUSES.includes(newCampaign.status as CampaignStatus)) {
               setCampaigns(prev => [newCampaign, ...prev]);
             }
           } else if (payload.eventType === 'UPDATE') {
             const updatedCampaign = payload.new as Campaign;
             setCampaigns(prev =>
               prev.map(c => c.id === updatedCampaign.id ? updatedCampaign : c)
-                .filter(c => c.status === 'Ongoing')
+                .filter(c => VISIBLE_STATUSES.includes(c.status as CampaignStatus))
             );
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
@@ -80,13 +84,13 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchAllOngoingCampaigns, supabase]);
+  }, [fetchCampaigns, supabase]);
 
   const contextValue = useMemo(() => ({
     campaigns,
     loading,
-    refetch: fetchAllOngoingCampaigns,
-  }), [campaigns, loading, fetchAllOngoingCampaigns]);
+    refetch: fetchCampaigns,
+  }), [campaigns, loading, fetchCampaigns]);
 
   return (
     <CampaignsContext.Provider value={contextValue}>

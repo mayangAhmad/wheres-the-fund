@@ -1,17 +1,16 @@
-//components/donation/DonationModal
 "use client";
 
 import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { X, ArrowLeft, AlertCircle } from "lucide-react";
-import CheckoutForm from "./CheckoutForm"; // Your existing form
+import CheckoutForm from "./CheckoutForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { validateCampaignId, validateDonationAmount } from "@/lib/validation/donationValidation";
+import createClient from "@/lib/supabase/client"; 
 
-// Load Stripe outside the component to avoid re-loading it on renders
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
 
 interface DonationModalProps {
@@ -29,7 +28,7 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
   const handleProceedToPayment = async () => {
     setError(null);
 
-     const campaignValidation = validateCampaignId(campaignId);
+    const campaignValidation = validateCampaignId(campaignId);
     if (!campaignValidation.valid) {
       setError(campaignValidation.error ?? null);
       return;
@@ -44,12 +43,39 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
     setIsLoading(true);
 
     try {
+      const supabase = createClient();
+      
+      // 1. Fetch campaign to check status and deadline
+      const { data: campaign, error: fetchError } = await supabase
+        .from("campaigns")
+        .select("status, end_date")
+        .eq("id", campaignId)
+        .single();
+
+      if (fetchError || !campaign) {
+        throw new Error("Unable to verify campaign status. Please try again.");
+      }
+
+      // 2. ONLY Block if campaign is strictly ended/closed
+      const isPastDeadline = new Date() > new Date(campaign.end_date);
+      if (campaign.status !== 'Ongoing' || isPastDeadline) {
+        setError("This campaign has ended and is no longer accepting donations.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Note: "Hard Cap" checks (collected vs goal) have been removed to allow overfunding.
+
+      const donationAmount = Number(amount);
+
+      // 3. Proceed to Stripe Checkout API
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-            amount: Number(amount),
-            campaignId: campaignId }), 
+            amount: donationAmount,
+            campaignId: campaignId 
+        }), 
       });
 
       const data = await res.json();
@@ -91,7 +117,6 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
         
         {!clientSecret ? (
           <div className="space-y-6 pt-4">
-            {/* Error message */}
             {error && (
               <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
@@ -99,7 +124,6 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
               </div>
             )}
 
-            {/* Preset Buttons */}
             <div className="grid grid-cols-3 gap-3">
               {["5", "10", "20", "50", "100"].map((val) => (
                 <button
@@ -119,7 +143,6 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
               ))}
             </div>
 
-            {/* Custom Amount Input */}
             <Input
               type="number"
               placeholder="Enter custom amount"
@@ -132,13 +155,12 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
               className="text-center"
             />
 
-            {/* Proceed Button */}
             <Button 
               onClick={handleProceedToPayment}
               disabled={isLoading || !amount}
               className="w-full bg-orange-600 hover:bg-orange-700"
             >
-              {isLoading ? "Processing..." : `Proceed to Payment`}
+              {isLoading ? "Checking Status..." : `Proceed to Payment`}
             </Button>
           </div>
         ) : (
@@ -150,5 +172,5 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

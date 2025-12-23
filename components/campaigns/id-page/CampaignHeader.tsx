@@ -1,13 +1,13 @@
 'use client'
 import { useState } from "react";
-import { User, Tag, HeartHandshake } from "lucide-react";
+import { User, Tag, HeartHandshake, Lock } from "lucide-react"; // Added Lock icon
 import { AmountProgress } from "../AmountProgress";
 import Image from "next/image";
 import DonationModal from "@/components/donation/DonationModal";
 
 interface HeaderProps {
   data: {
-    id:string;
+    id: string;
     category: string;
     ngoName: string;
     createdAt: string | null;
@@ -17,26 +17,24 @@ interface HeaderProps {
     tags: string[];
     targetAmount: number;
     collectedAmount: number;
+    status: string | null; // Ensure status is passed in data
   };
 }
 
 export default function CampaignHeader({ data }: HeaderProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const formattedDate = data.createdAt
-    ? new Date(data.createdAt).toLocaleDateString("en-GB")
-    : "Recent";
+  // 1. Logic to check if the campaign is finished
+  const isFinished = data.status === 'Completed' || data.status === 'Closed';
 
   const percentage = Math.min(
     (data.collectedAmount / (data.targetAmount || 1)) * 100,
     100
   ).toFixed(0);
 
-  
-
   return (
     <div className="flex flex-col md:flex-row gap-6 mb-12 w-full">
-      {/* Left: Image */}
+      {/* ... Left: Image Section (Stays the same) ... */}
       <div className="w-full md:w-5/12 h-[250px] md:h-[40vh] shrink-0">
         <div className="relative w-full h-full overflow-hidden rounded-md shadow-lg group">
           <Image
@@ -49,9 +47,7 @@ export default function CampaignHeader({ data }: HeaderProps) {
         </div>
       </div>
 
-      {/* Right: Info */}
       <div className="w-full md:w-7/12 flex flex-col justify-between">
-        {/* Top Info */}
         <div>
           <div className="flex items-center gap-2 text-sm text-orange-600 font-semibold uppercase tracking-wide mb-3">
             <span>{data.category || "General"}</span>
@@ -61,10 +57,7 @@ export default function CampaignHeader({ data }: HeaderProps) {
             </span>
           </div>
 
-          <h1
-            className="mb-4 text-2xl lg:text-3xl font-extrabold text-gray-900 leading-tight"
-            title={data.title}
-          >
+          <h1 className="mb-4 text-2xl lg:text-3xl font-extrabold text-gray-900 leading-tight">
             {data.title}
           </h1>
 
@@ -73,22 +66,7 @@ export default function CampaignHeader({ data }: HeaderProps) {
           </p>
         </div>
 
-        {/* Footer */}
         <div className="mt-6 flex flex-col gap-3 pt-3 border-t border-gray-100">
-          {/* Tags */}
-          {data.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {data.tags.map((tag, i) => (
-                <span
-                  key={i}
-                  className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide flex items-center gap-1"
-                >
-                  <Tag size={10} /> {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
           {/* Stats & Progress */}
           <div>
             <div className="flex justify-between items-end mb-1">
@@ -100,24 +78,47 @@ export default function CampaignHeader({ data }: HeaderProps) {
                   / {data.targetAmount.toLocaleString()}
                 </p>
               </div>
-              <span className="text-lg font-bold text-orange-600">
+              <span className={`text-lg font-bold ${isFinished ? 'text-gray-500' : 'text-orange-600'}`}>
                 {percentage}%
               </span>
             </div>
+            {/* AmountProgress handles the dark orange logic we discussed */}
             <AmountProgress
               currentAmount={data.collectedAmount}
               targetAmount={data.targetAmount}
+              status={data.status} 
             />
           </div>
 
-          {/* Donate Button */}
+          {/* 2. Conditional Donate Button */}
           <button
-            onClick={() => setIsModalOpen(true)} // 5. Direct Trigger
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-base py-3 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
+            onClick={() => !isFinished && setIsModalOpen(true)}
+            disabled={isFinished}
+            className={`w-full font-bold text-base py-3 rounded-md transition-all flex items-center justify-center gap-2 
+              ${isFinished 
+                ? "bg-gray-200 text-gray-500 shadow-none" 
+                : "bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:shadow-lg active:scale-[0.98]"
+              }`}
           >
-            <HeartHandshake size={18} />
-            Donate Now
+            {isFinished ? (
+              <>
+                <Lock size={18} />
+                Campaign Ended
+              </>
+            ) : (
+              <>
+                <HeartHandshake size={18} />
+                Donate Now
+              </>
+            )}
           </button>
+          
+          {/* Optional: Add a small helper text for clarity */}
+          {isFinished && (
+            <p className="text-center text-xs text-gray-400 font-medium italic">
+              This campaign is no longer accepting donations.
+            </p>
+          )}
         </div>
       </div>
 

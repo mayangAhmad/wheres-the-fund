@@ -216,36 +216,50 @@ export async function POST(req: Request) {
                 }
             }
 
-            // F. UPDATE CAMPAIGN TOTALS
-            const { data: currentCampaign } = await supabaseAdmin
-                .from("campaigns")
-                .select("collected_amount, donations_count, title")
-                .eq("id", campaignId)
-                .single();
+// F. UPDATE CAMPAIGN TOTALS
+const { data: currentCampaign } = await supabaseAdmin
+    .from("campaigns")
+    .select("collected_amount, goal_amount, donations_count, title, status")
+    .eq("id", campaignId)
+    .single();
 
-            const newTotal = (currentCampaign?.collected_amount || 0) + amountRM;
-            const newCount = (currentCampaign?.donations_count || 0) + 1;
+const goal = currentCampaign?.goal_amount || 0;
+const newTotal = (currentCampaign?.collected_amount || 0) + amountRM;
+const newCount = (currentCampaign?.donations_count || 0) + 1;
+const now = new Date().toISOString();
 
-            // Capture the current time in ISO format
-            const now = new Date().toISOString();
+// Determine new status based on your new Enum logic
+let newStatus = currentCampaign?.status || 'Ongoing';
 
-            await supabaseAdmin
-                .from("campaigns")
-                .update({
-                    collected_amount: newTotal,
-                    donations_count: newCount,
-                    last_donation_at: now // <--- Update timestamp here
-                })
-                .eq("id", campaignId);
+// Only flip to 'Completed' if it's currently 'Ongoing' and target is met
+if (newStatus === 'Ongoing' && newTotal >= goal) {
+    newStatus = 'Completed'; 
+}
 
-            await supabaseAdmin
-                .from("notifications")
-                .insert({
-                    user_id: donorId,
-                    message: `Your donation of RM${amountRM} to Campaign ${currentCampaign?.title} has been processed successfully!`,
-                });
+// ✅ COMBINED UPDATE: Update everything in one single database call
+const { error: updateError } = await supabaseAdmin
+    .from("campaigns")
+    .update({
+        collected_amount: newTotal,
+        donations_count: newCount,
+        last_donation_at: now,
+        status: newStatus
+    })
+    .eq("id", campaignId);
 
-            console.log("🎉 Webhook Process Complete!");
+if (updateError) {
+    console.error("❌ Error updating campaign totals:", updateError);
+}
+
+// G. NOTIFICATIONS
+await supabaseAdmin
+    .from("notifications")
+    .insert({
+        user_id: donorId,
+        message: `Your donation of RM${amountRM} to "${currentCampaign?.title}" has been processed!`,
+    });
+
+console.log(`🎉 Webhook Process Complete! Campaign Status: ${newStatus}`);
 
         } catch (error: any) {
             console.error("❌ Logic Failed:", error);

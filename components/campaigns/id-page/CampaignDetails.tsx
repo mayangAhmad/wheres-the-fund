@@ -143,6 +143,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
     tags: ['Charity'],
     targetAmount: basicInfo.goal_amount,
     collectedAmount: basicInfo.collected_amount,
+    status: basicInfo.status,
   };
 
   return (
