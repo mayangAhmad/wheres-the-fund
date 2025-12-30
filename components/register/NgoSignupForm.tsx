@@ -95,7 +95,7 @@ export default function NgoSignupForm() {
             type={showPassword ? "text" : "password"}
             placeholder="********"
             {...register("password")}
-            name="password" // ✅ REQUIRED for Server Action
+            name="password" 
             className={errors.password ? "border-red-500" : ""}
           />
           <button

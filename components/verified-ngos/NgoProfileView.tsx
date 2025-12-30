@@ -11,6 +11,7 @@ import {
   Building2 
 } from "lucide-react";
 import CampaignCard from "../campaigns/CampaignCard";
+import wsrvLoader from "@/lib/services/image-service";
 // Adjust this import path if your card is in a different folder
 
 // --- Types (Defined locally to avoid circular dependencies) ---
@@ -72,6 +73,7 @@ export default function NgoProfileView({ profile, activeCampaigns }: ViewProps) 
             <div className="h-32 w-32 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100 relative">
               {profile.avatar_url ? (
                 <Image
+                  loader={wsrvLoader}
                   src={profile.avatar_url}
                   alt={profile.users?.name || "NGO"}
                   fill

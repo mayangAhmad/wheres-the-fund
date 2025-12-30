@@ -1,26 +1,15 @@
+// @/context/CampaignsContext.tsx
 'use client'
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import createClient from '@/lib/supabase/client'
+// 1. Import the master type
+import { Campaign } from '@/types/ngo' 
 
-// 🌟 Use a specific type for the Enum to prevent typos
+// You can keep the Enum if you like, or import it if defined in ngo.ts
 export type CampaignStatus = 'Ongoing' | 'Completed' | 'Closed' | 'Creating' | 'Failed' | 'Expired';
 
-export type Campaign = {
-  id: string
-  ngo_name: string | null
-  title: string
-  description: string | null
-  category: string | null
-  image_url: string | null
-  goal_amount: number
-  collected_amount: number
-  status: CampaignStatus | null
-  end_date: string | null
-  created_at: string | null
-}
-
-interface CampaignsContextType {
-  campaigns: Campaign[];
+export interface CampaignsContextType {
+  campaigns: Campaign[]; // Use the master type
   loading: boolean;
   refetch: () => Promise<void>;
 }
@@ -32,7 +21,6 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
 
-  // ✅ These are the statuses we want to show on the public browse page
   const VISIBLE_STATUSES: CampaignStatus[] = ['Ongoing', 'Completed', 'Closed'];
 
   const fetchCampaigns = useCallback(async () => {
@@ -98,3 +86,4 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     </CampaignsContext.Provider>
   );
 };
+

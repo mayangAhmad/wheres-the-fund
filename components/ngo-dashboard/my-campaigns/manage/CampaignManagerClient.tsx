@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react"; // 1. Import useEffect
+import { useState, useEffect } from "react";
 import Link from "next/link"; 
 import { 
   CheckCircle2, Lock, Clock, AlertCircle, 
   Users, TrendingUp, ArrowLeft, XCircle, Link as LinkIcon, 
-  Loader2
+  Loader2, Box
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UpdateMilestoneModal from "./UpdateMilestoneModal";
-import createClient from "@/lib/supabase/client"; // 2. Import Supabase Client
+import createClient from "@/lib/supabase/client";
 
 const CHAINLENS_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "http://localhost:8999"; 
 
@@ -19,15 +19,17 @@ interface Props {
 }
 
 export default function CampaignManagerClient({ campaign, milestones: initialMilestones }: Props) {
-  // 3. Store milestones in state so they can be updated dynamically
   const [milestones, setMilestones] = useState(initialMilestones);
   const [selectedMilestone, setSelectedMilestone] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const supabase = createClient();
 
-  // 4. REALTIME SUBSCRIPTION
+  // --- 1. REALTIME SUBSCRIPTION ---
   useEffect(() => {
-    // Listen for any UPDATE to the 'milestones' table for this specific campaign
+    setMilestones(initialMilestones);
+  }, [initialMilestones]);
+
+  useEffect(() => {
     const channel = supabase
       .channel(`campaign-milestones-${campaign.id}`)
       .on(
@@ -39,12 +41,10 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
           filter: `campaign_id=eq.${campaign.id}`,
         },
         (payload) => {
-          // When a change happens (e.g., status becomes 'pending_proof'), update the state
           const updatedMilestone = payload.new;
-          
           setMilestones((prev) => 
             prev.map((ms) => 
-              ms.id === updatedMilestone.id ? updatedMilestone : ms
+              ms.id === updatedMilestone.id ? { ...ms, ...updatedMilestone } : ms
             )
           );
         }
@@ -66,7 +66,7 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto">
       
-      {/* ... Header & Back Button (No Changes) ... */}
+      {/* Navigation */}
       <div className="mb-6">
         <Link href="/ngo/campaigns" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors group">
           <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -85,115 +85,101 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
         <div className="order-2 lg:order-1 lg:col-span-2">
            <div className="flex items-center justify-between mb-6">
              <h3 className="text-lg font-bold text-gray-900">Milestone Control</h3>
-             {/* Use state 'milestones' here */}
              <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{milestones.length} Phases</span>
            </div>
            
            <div className="space-y-4">
-             {/* Map over the STATE 'milestones', not the prop */}
              {milestones.map((ms, index) => {
-               // ... (Keep all your existing status logic exactly the same) ...
+               // Logic for statuses based on your Traffic Light system
                const isPendingProof = ms.status === 'pending_proof';
                const isRejected = ms.status === 'rejected';
                const isPendingReview = ms.status === 'pending_review';
-               const isCompleted = ms.status === 'approved' || ms.status === 'completed';
+               const isApproved = ms.status === 'approved';
+               const isCompleted = ms.status === 'completed' || isApproved;
                const isActivePhase = ms.status === 'active'; 
-               const isLocked = ms.status === 'locked' || (!isActivePhase && !isPendingProof && !isRejected && !isPendingReview && !isCompleted);
+               const isLocked = ms.status === 'locked';
                const canSubmitProof = isPendingProof || isRejected;
 
                return (
                  <div 
                    key={ms.id} 
-                   className={`relative p-6 rounded-xl border-2 transition-all duration-500 ease-in-out ${ // Added animation
-                     canSubmitProof ? 'border-orange-400 bg-white shadow-md scale-[1.01]' : 
+                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                     canSubmitProof ? 'border-orange-400 bg-white shadow-md' : 
                      isCompleted ? 'border-green-100 bg-green-50/30' :
-                     isActivePhase ? 'border-blue-200 bg-white' : 
-                     'border-gray-100 bg-gray-50'
+                     isActivePhase ? 'border-blue-200 bg-white ring-2 ring-blue-50' : 
+                     'border-gray-100 bg-gray-50 opacity-75'
                    }`}
                  >
-                   {/* ... (Keep all the badge logic and content exactly the same) ... */}
-                   
+                   {/* Status Badge Positioning */}
                    <div className="absolute top-4 right-4">
-                      {isCompleted && <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold"><CheckCircle2 size={12}/> Completed</span>}
-                      {isActivePhase && <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-bold"><Clock size={12}/> Fundraising...</span>}
-                      {isPendingReview && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold"><Clock size={12}/> Under Review</span>}
+                      {isCompleted && <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold"><CheckCircle2 size={12}/> Released</span>}
+                      {isActivePhase && <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-bold"><Clock size={12}/> Active</span>}
+                      {isPendingReview && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold"><Loader2 size={12} className="animate-spin"/> Reviewing</span>}
                       {isLocked && <span className="flex items-center gap-1 text-gray-400 bg-gray-100 px-2 py-1 rounded-full text-xs font-bold"><Lock size={12}/> Locked</span>}
                       {isRejected && <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-bold"><XCircle size={12}/> Rejected</span>}
-                      {isPendingProof && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold animate-pulse"><AlertCircle size={12}/> Cap Reached</span>}
+                      {isPendingProof && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold animate-pulse"><AlertCircle size={12}/> Action Required</span>}
                    </div>
 
-                   <h4 className="text-xs font-bold text-gray-500 uppercase mb-1 tracking-wider">Phase {index + 1}</h4>
-                   <h3 className={`text-lg font-bold mb-2 ${isLocked ? 'text-gray-400' : 'text-gray-900'}`}>{ms.title}</h3>
-                   <p className="text-sm text-gray-500 mb-6">{ms.description}</p>
+                   <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Phase {index + 1}</h4>
+                   <h3 className={`text-lg font-bold mb-1 ${isLocked ? 'text-gray-400' : 'text-gray-900'}`}>{ms.title}</h3>
+                   <p className="text-sm text-gray-500 mb-6 line-clamp-2">{ms.description}</p>
 
-                   {/* Alerts */}
+                   {/* Alert Messaging */}
                    {isPendingProof && (
-                        <div className="mb-4 bg-orange-50 border-l-4 border-orange-500 p-4 animate-in slide-in-from-left-2">
-                            <p className="text-sm text-orange-700 font-bold">⚠️ Milestone Cap Reached!</p>
-                            <p className="text-xs text-orange-600 mt-1">Donations are paused. Submit proof to unlock funds.</p>
+                        <div className="mb-4 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
+                            <p className="text-sm text-orange-700 font-bold italic">"Milestone cap reached. Donations are now held in escrow. Please submit proof of work to unlock funds."</p>
                         </div>
                    )}
                    {isRejected && (
-                        <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 animate-in slide-in-from-left-2">
-                            <p className="text-sm text-red-700 font-bold flex items-center gap-2">Proof Rejected</p>
-                            <p className="text-xs text-red-600 mt-1">The admin requested changes. Please check details and resubmit.</p>
+                        <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                            <p className="text-sm text-red-700 font-bold">Admin Remark:</p>
+                            <p className="text-xs text-red-600 mt-1 italic">{ms.auditor_remarks || "Please provide clearer photos of the distribution."}</p>
                         </div>
                    )}
 
-                   {/* Blockchain Proof */}
-                   {isCompleted && ms.payout_tx_hash && (
-                     <div className="mt-4 pt-4 border-t border-green-200/50">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-green-700 font-medium flex items-center gap-2">
-                                <CheckCircle2 size={14} /> Payout Verified on Blockchain
-                            </span>
-                            <a 
-                                href={`${CHAINLENS_URL}/tx/${ms.payout_tx_hash}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                            >
-                                <LinkIcon size={12} />
-                                View in Chainlens
-                            </a>
+                   {/* IPFS Transparency (Proof of decentralized storage) */}
+                   {(isPendingReview || isCompleted) && ms.ipfs_cid && (
+                     <div className="mb-4 p-3 bg-gray-100/50 rounded-lg border border-gray-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <Box size={14} className="text-gray-400" />
+                           <span className="text-xs text-gray-500 font-medium">IPFS Proof CID</span>
                         </div>
-                        <div className="mt-1 text-[10px] text-gray-400 font-mono bg-white/50 p-1.5 rounded border border-green-100 truncate">
-                            Tx: {ms.payout_tx_hash}
-                        </div>
+                        <a 
+                          href={`https://gateway.pinata.cloud/ipfs/${ms.ipfs_cid}`} 
+                          target="_blank" 
+                          className="text-[10px] font-mono text-blue-600 hover:underline bg-white px-2 py-1 rounded border shadow-sm"
+                        >
+                          {ms.ipfs_cid.slice(0, 15)}...
+                        </a>
                      </div>
                    )}
 
-                   {/* Action Buttons */}
+                   {/* Blockchain Payout Verification */}
+                   {isCompleted && ms.payout_tx_hash && (
+                     <div className="mt-4 pt-4 border-t border-green-100 flex items-center justify-between">
+                        <span className="text-xs text-green-700 font-bold flex items-center gap-1.5">
+                            <LinkIcon size={12} /> Payout Tx Verified
+                        </span>
+                        <a 
+                            href={`${CHAINLENS_URL}/tx/${ms.payout_tx_hash}`} 
+                            target="_blank" 
+                            className="text-[10px] text-blue-600 font-mono hover:underline"
+                        >
+                            {ms.payout_tx_hash.slice(0, 8)}...{ms.payout_tx_hash.slice(-8)}
+                        </a>
+                     </div>
+                   )}
+
+                   {/* Dynamic Action Buttons */}
                    {canSubmitProof && (
-                       <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
-                          <div className="text-sm text-orange-700 font-medium animate-pulse">
-                             {isRejected ? "Action: Resubmit Proof" : "Action: Submit Proof to Unlock Funds"}
-                          </div>
+                       <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
                           <Button 
                             onClick={() => openUpdateModal(ms)}
-                            variant={isRejected ? "destructive" : "default"}
+                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
                           >
-                             {isRejected ? "Resubmit Proof" : "Submit Proof"}
+                             {isRejected ? "Resubmit Evidence" : "Upload Evidence"}
                           </Button>
                        </div>
-                   )}
-
-                   {isActivePhase && (
-                       <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
-                          <div className="text-sm text-gray-400">
-                             Status: Collecting Donations
-                          </div>
-                          <Button disabled variant="outline" className="bg-gray-50 text-gray-400 border-gray-200">
-                             <Lock size={14} className="mr-2" /> Proof Locked
-                          </Button>
-                       </div>
-                   )}
-                   
-                   {isPendingReview && (
-                     <div className="text-sm text-blue-600 font-medium pt-4 border-t border-blue-50 mt-4 flex items-center gap-2">
-                        <Loader2 size={16} className="animate-spin" />
-                        Waiting for auditor approval.
-                     </div>
                    )}
                  </div>
                )
@@ -201,47 +187,38 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
            </div>
         </div>
 
-        {/* Stats Column (No Changes) */}
+        {/* Stats Column */}
         <div className="order-1 lg:order-2 lg:col-span-1 space-y-6">
-            {/* ... Keep existing Stats code ... */}
              <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 tracking-wider flex items-center gap-2">
-                  <TrendingUp size={14} /> Financial Overview
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest flex items-center gap-2">
+                  <TrendingUp size={14} /> Campaign Health
                 </h3>
                 <div className="space-y-4">
                   <div>
                     <span className="block text-3xl font-bold text-gray-900">
                       RM {Number(campaign.collected_amount).toLocaleString()}
                     </span>
-                    <span className="text-sm text-gray-500">Total Collected</span>
+                    <span className="text-sm text-gray-500">Collected in MYR</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div className="bg-green-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${percentFunded}%` }}></div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="bg-orange-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${percentFunded}%` }}></div>
                   </div>
                   <div className="flex justify-between items-center pt-2">
-                    <div>
-                      <span className="block text-lg font-semibold text-gray-900">RM {Number(campaign.goal_amount).toLocaleString()}</span>
-                      <span className="text-xs text-gray-500">Target Goal</span>
-                    </div>
-                    <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">{percentFunded}%</span>
+                    <span className="text-xs font-bold text-gray-400">Target: RM {Number(campaign.goal_amount).toLocaleString()}</span>
+                    <span className="text-sm font-black text-orange-600">{percentFunded}%</span>
                   </div>
                 </div>
               </div>
 
               <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-                 <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 tracking-wider flex items-center gap-2">
-                    <Users size={14} /> Donor Insights
+                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest flex items-center gap-2">
+                    <Users size={14} /> Donor Activity
                  </h3>
-                 <div className="flex items-center justify-between mb-4">
-                    <div>
-                       <span className="block text-3xl font-bold text-gray-900">{campaign.donations_count || 0}</span>
-                       <span className="text-sm text-gray-500">Total Donors</span>
-                    </div>
-                    <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"><Users size={20} /></div>
+                 <div className="flex items-center justify-between mb-2">
+                    <span className="text-3xl font-bold text-gray-900">{campaign.donations_count || 0}</span>
+                    <div className="h-10 w-10 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center font-bold">#</div>
                  </div>
-                 <div className="text-xs text-gray-400 border-t pt-3">
-                    Last donation received {campaign.last_donation_at ? new Date(campaign.last_donation_at).toLocaleDateString() : '—'}
-                 </div>
+                 <p className="text-xs text-gray-400">Lifetime contributions to this campaign.</p>
               </div>
         </div>
       </div>

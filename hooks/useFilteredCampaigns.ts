@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useCampaigns } from './useCampaigns'
-import { Campaign } from '@/context/CampaignsContext'
+import { Campaign } from '@/types/ngo';
 
 interface FilterParams {
   filterStatus: string // From UI: 'All Status', 'Ongoing', 'Completed'
@@ -22,7 +22,6 @@ export const useFilteredCampaigns = ({ filterStatus, filterCategory, searchTerm 
         }
         
         if (filterStatus === 'Completed') {
-          // ✅ Map UI label "Completed" to both Successful and Expired states
           return c.status === 'Completed' || c.status === 'Closed';
         }
         

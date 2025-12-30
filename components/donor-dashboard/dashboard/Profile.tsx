@@ -36,55 +36,55 @@ export function Profile({ profile, stats }: Props) {
         <div className="bg-white border border-gray-200 rounded-xl p-6 md:p-10 shadow-sm h-full flex flex-col justify-between gap-6">
             
             {/* 1. TOP SECTION: Identity */}
-            <div className="flex flex-col md:flex-row md:items-start items-center md:justify-between justify-center gap-4">
-                <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left ">
-                    {/* Avatar */}
-                    <div className="relative shrink-0">
-                        <div className="w-30 h-30 rounded-full bg-orange-100 flex items-center justify-center border-4 border-white shadow-sm">
-                            <User className="w-9 h-9 text-orange-600" />
-                        </div>
-                        <div className="absolute bottom-1.5 right-1.5 bg-green-500 border-4 border-white w-6 h-6 rounded-full" />
+        <div className="flex flex-col xl:flex-row items-center xl:items-start justify-between gap-6">
+            <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left ">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                    <div className="w-30 h-30 rounded-full bg-orange-100 flex items-center justify-center border-4 border-white shadow-sm">
+                        <User className="w-9 h-9 text-orange-600" />
                     </div>
+                    <div className="absolute bottom-1.5 right-1.5 bg-green-500 border-4 border-white w-6 h-6 rounded-full" />
+                </div>
 
-                    <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
+                <div className="space-y-1">
+                    <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
+                    
+                    <div className="flex flex-col gap-2 text-sm text-gray-500">
+                        <div className="flex flex-col md:flex-row flex-wrap justify-start gap-2">
+                            <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {profile.email}</span>
+                            {profile.phoneNum && <span className="flex items-center gap-1.5 border-gray-300 md:border-l md:pl-3"><Phone className="w-3.5 h-3.5" /> {profile.phoneNum}</span>}
+                        </div>
                         
-                        <div className="flex flex-col gap-2 text-sm text-gray-500">
-                            <div className="flex flex-col md:flex-row flex-wrap justify-start gap-2">
-                                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {profile.email}</span>
-                                {profile.phoneNum && <span className="flex items-center gap-1.5 border-gray-300 md:border-l md:pl-3"><Phone className="w-3.5 h-3.5" /> {profile.phoneNum}</span>}
-                            </div>
-                            
-                            {/* Wallet Address */}
-                            <div className="flex items-center gap-2">
-                                {profile.wallet_address && (
-                                    <span className="text-xs text-gray-500 flex gap-1.5">
-                                        <Wallet className="w-3.5 h-3.5" /> {shortenAddress(profile.wallet_address)}
-                                    </span>
-                                )}
-                            </div>
+                        {/* Wallet Address */}
+                        <div className="flex items-center gap-2">
+                            {profile.wallet_address && (
+                                <span className="text-xs text-gray-500 flex gap-1.5">
+                                    <Wallet className="w-3.5 h-3.5" /> {shortenAddress(profile.wallet_address)}
+                                </span>
+                            )}
+                        </div>
 
-                            {/* JOIN DATE (Added Back) */}
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                <Calendar className="w-3.5 h-3.5" /> 
-                                <span>Joined {new Date(profile.created_at).toLocaleString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                }) || "Recently"}</span>
-                            </div>
+                        {/* JOIN DATE */}
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <Calendar className="w-3.5 h-3.5" /> 
+                            <span>Joined {new Date(profile.created_at).toLocaleString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            }) || "Recently"}</span>
                         </div>
                     </div>
                 </div>
-                
-                <Link 
-                    href="/donor/settings" 
-                    className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2"
-                    >
-                        <Edit className="w-3.5 h-3.5" /> 
-                        Edit Profile
-                    </Link>
             </div>
+            
+            <Link 
+                href="/donor/settings" 
+                className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2 self-center xl:self-start"
+            >
+                <Edit className="w-3.5 h-3.5" /> 
+                Edit Profile
+            </Link>
+        </div>
 
             {/* 2. MIDDLE SECTION: Stats */}
             <div className="bg-gray-50/80 rounded-xl p-5 border border-gray-100 grid grid-col-1 md:grid-cols-3 gap-6">

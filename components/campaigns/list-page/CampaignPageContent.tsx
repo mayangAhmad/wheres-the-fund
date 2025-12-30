@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Search, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { useDebounce } from 'use-debounce' 
 import CampaignGrid from '@/components/campaigns/list-page/CampaignGrid'
+import wsrvLoader from "@/lib/services/image-service";
 
 // ----------------------------------------------------------------------
 // 1. Dropdown Component
@@ -79,7 +80,7 @@ export default function CampaignPageContent() {
   const [debouncedSearchTerm] = useDebounce(inputText, 300)
   
   const statusOptions = ['All Status', 'Ongoing', 'Completed']
-  const categoryOptions = ['All Campaigns', 'Disaster', 'Education', 'Hunger', 'Medical', 'Community']
+  const categoryOptions = ['All Campaigns', 'Disaster Relief', 'Education', 'Hunger', 'Medical', 'Community']
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -87,7 +88,8 @@ export default function CampaignPageContent() {
       {/* HERO SECTION */}
       <section className="relative h-[45vh] lg:h-[50vh] w-full flex items-center justify-center overflow-hidden">
         <Image
-          src="/hero-image.jpg"
+          loader={wsrvLoader}
+          src="https://tsdtxolyogjpmbtogfmr.supabase.co/storage/v1/object/public/asset/hero-image.jpg"
           alt="Campaigns background"
           fill
           priority

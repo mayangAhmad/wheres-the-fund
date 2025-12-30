@@ -1,3 +1,4 @@
+//components/donor-dashboard/history/HIstoryClientView.tsx
 "use client";
 
 import { useState } from "react";
@@ -5,14 +6,28 @@ import { Search, Download, Filter } from "lucide-react";
 import HistoryTable from "./HistoryTable";
 
 export interface DonationRecord {
+  // Direct table columns
   id: string;
-  amount: number;
-  status: string | null; 
-  created_at: string;
-  on_chain_tx_hash: string | null; 
+  campaign_id: string;
+  donor_id: string | null;           
+  amount: number;                    
+  stripe_payment_id: string;         
+  on_chain_tx_hash: string | null;   
+  status: string | null;             
+  created_at: string;               
+  payment_method: string | null;    
+  milestone_index: number;           
+
+  // Joined relations (from your Supabase .select() query)
   campaigns: {
     title: string;
     id: string;
+  } | null;
+
+  // Linked via campaign_id + milestone_index in your logic
+  milestones?: {
+    ipfs_cid: string | null;
+    proof_description: string | null;
   } | null;
 }
 
@@ -29,15 +44,16 @@ export default function HistoryClientView({ initialDonations }: HistoryClientVie
     const campaignTitle = donation.campaigns?.title || "Unknown Campaign";
     const matchesSearch = campaignTitle.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // 2. Status Logic (Case Insensitive Fix)
-    // We normalize everything to lowercase for comparison
-    const dbStatus = (donation.status || "processing").toLowerCase();
-    
+   const dbStatus = (donation.status || "processing").toLowerCase();
+
     let matchesStatus = true;
     if (filterStatus !== "all") {
-        // If filter is 'processing', match 'processing' OR 'pending'
         if (filterStatus === "processing") {
-            matchesStatus = dbStatus === "processing" || dbStatus === "pending";
+            // 💡 Include the new sync status so it doesn't vanish during the background process
+            matchesStatus = 
+                dbStatus === "processing" || 
+                dbStatus === "pending" || 
+                dbStatus === "pending_blockchain_sync";
         } else {
             matchesStatus = dbStatus === filterStatus;
         }

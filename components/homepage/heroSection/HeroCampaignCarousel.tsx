@@ -7,13 +7,29 @@ import { useInfiniteCarousel } from '@/hooks/useInfiniteCarousel'
 import { useSwipeable } from 'react-swipeable'
 import clsx from 'clsx'
 import { useResponsiveVisibleItems } from '@/hooks/useResponsiveVisibleItems'
+// 1. Import the Type from your file
+import { Campaign } from '@/types/ngo' 
 
 interface HeroCampaignCarouselProps {
-  campaigns: any[]
+  campaigns: Campaign[] // 2. Use the imported interface here
 }
 
 export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarouselProps) {
   const visibleItems = useResponsiveVisibleItems()
+
+const filteredCampaigns = useMemo(() => {
+  return campaigns.filter((campaign) => {
+    const category = (campaign.category || "").toLowerCase().trim();
+    
+    const allowedKeywords = ['disaster', 'hunger'];
+    const isMatchCategory = allowedKeywords.some(kw => category.includes(kw));
+
+    const status = (campaign.status || "").toLowerCase().trim();
+    const isActive = status === 'ongoing' || status === 'active';
+
+    return isMatchCategory && isActive;
+  });
+}, [campaigns]);
 
   const {
     index,
@@ -23,14 +39,14 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
     isTransitioning,
     translateX,
     containerRef
-  } = useInfiniteCarousel(campaigns.length, visibleItems)
+  } = useInfiniteCarousel(filteredCampaigns.length, visibleItems)
 
   const infiniteCampaigns = useMemo(() => {
-    if (campaigns.length === 0) return []
-    const startClones = campaigns.slice(-visibleItems)
-    const endClones = campaigns.slice(0, visibleItems)
-    return [...startClones, ...campaigns, ...endClones]
-  }, [campaigns, visibleItems])
+    if (filteredCampaigns.length === 0) return []
+    const startClones = filteredCampaigns.slice(-visibleItems)
+    const endClones = filteredCampaigns.slice(0, visibleItems)
+    return [...startClones, ...filteredCampaigns, ...endClones]
+  }, [filteredCampaigns, visibleItems])
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: handleNext,
@@ -38,7 +54,7 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
     trackMouse: true,
   })
 
-  if (campaigns.length === 0) return null
+  if (filteredCampaigns.length === 0) return null
 
   return (
     <div 
@@ -48,13 +64,11 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
       <button
         onClick={handlePrev}
         disabled={isTransitioning}
-        className="shrink-0 hidden md:block bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full p-3 transition-all disabled:opacity-30 disabled:scale-90 disabled:cursor-default"
-        aria-label="Previous slide"
+        className="shrink-0 hidden md:block bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full p-3 transition-all disabled:opacity-30 disabled:scale-90"
       >
         <ChevronLeft className="w-6 h-6" />
       </button>
 
-      {/* CAROUSEL WINDOW */}
       <div className="overflow-hidden flex-1 -my-8 py-8 px-1">
         <div
           ref={containerRef}
@@ -73,6 +87,7 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
                 aria-hidden={!isVisible}
               >
                 <div className="group transition-transform duration-300 hover:-translate-y-2 h-full">
+                  {/* Now CampaignCard also receives the typed object */}
                   <CampaignCard
                    campaign={campaign} 
                    priority={i < 3}
@@ -87,8 +102,7 @@ export default function HeroCampaignCarousel({ campaigns }: HeroCampaignCarousel
       <button
         onClick={handleNext}
         disabled={isTransitioning}
-        className="shrink-0 hidden md:block bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full p-3 transition-all disabled:opacity-30 disabled:scale-90 disabled:cursor-default"
-        aria-label="Next slide"
+        className="shrink-0 hidden md:block bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full p-3 transition-all disabled:opacity-30 disabled:scale-90"
       >
         <ChevronRight className="w-6 h-6" />
       </button>

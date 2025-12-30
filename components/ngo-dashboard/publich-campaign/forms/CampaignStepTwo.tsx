@@ -1,4 +1,3 @@
-// @/components/forms/steps/CampaignStepTwo.tsx
 "use client";
 
 import { UseFormReturn } from "react-hook-form";
@@ -6,10 +5,9 @@ import { CampaignFormInput } from "@/lib/validation/campaignSchema";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import FormError from "./FormError";
 
 export default function CampaignStepTwo({ form }: { form: UseFormReturn<CampaignFormInput> }) {
-  const { errors } = form.formState;
-
   return (
     <>
       <h1 className="text-2xl font-bold max-w-6xl mx-auto">📢 How can donors connect with you?</h1>
@@ -17,7 +15,6 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
         Provide accurate contact details and PICs.
       </p>
 
-      {/* Responsive grid: auto-fit with minmax */}
       <div className="mt-8 grid gap-10 w-full max-w-6xl mx-auto grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
         
         {/* General Contact Container */}
@@ -34,9 +31,7 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
                 placeholder="Email"
                 className="bg-white"
               />
-              {typeof errors.contact_email?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.contact_email.message}</p>
-              )}
+              <FormError form={form} name="contact_email" /> {/* ✅ replaced inline error */}
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Telephone Number</Label>
@@ -48,20 +43,16 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
                 placeholder="Telephone Number"
                 className="bg-white"
               />
-              {typeof errors.contact_phone?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.contact_phone.message}</p>
-              )}
+              <FormError form={form} name="contact_phone" /> {/* ✅ replaced inline error */}
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Campaign Address</Label>
               <Textarea
                 {...form.register("campaign_address")}
                 placeholder="Physical Address of Campaign"
-                className="w-full bg-white break-words whitespace-pre-wrap h-24 md:h-32 lg:h-40"
+                className="w-full bg-white wrap-break-word whitespace-pre-wrap h-24 md:h-32 lg:h-40"
               />
-              {typeof errors.campaign_address?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.campaign_address.message}</p>
-              )}
+              <FormError form={form} name="campaign_address" /> {/* ✅ replaced inline error */}
             </div>
           </div>
         </div>
@@ -75,9 +66,7 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
             <div className="space-y-2">
               <Label className="text-sm">Name</Label>
               <Input {...form.register("pic1.name")} placeholder="Name" className="bg-white" />
-              {typeof errors.pic1?.name?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.pic1.name?.message}</p>
-              )}
+              <FormError form={form} name="pic1.name" /> {/* ✅ replaced inline error */}
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Contact Number</Label>
@@ -89,9 +78,7 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
                 placeholder="Contact Number"
                 className="bg-white"
               />
-              {typeof errors.pic1?.contact?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.pic1.contact?.message}</p>
-              )}
+              <FormError form={form} name="pic1.contact" /> {/* ✅ replaced inline error */}
             </div>
           </div>
         </div>
@@ -105,9 +92,7 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
             <div className="space-y-2">
               <Label className="text-sm">Name</Label>
               <Input {...form.register("pic2.name")} placeholder="Name" className="bg-white" />
-              {typeof errors.pic2?.name?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.pic2.name?.message}</p>
-              )}
+              <FormError form={form} name="pic2.name" /> {/* ✅ replaced inline error */}
             </div>
             <div className="space-y-2">
               <Label className="text-sm">Contact Number</Label>
@@ -119,9 +104,7 @@ export default function CampaignStepTwo({ form }: { form: UseFormReturn<Campaign
                 placeholder="Contact Number"
                 className="bg-white"
               />
-              {typeof errors.pic2?.contact?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.pic2.contact?.message}</p>
-              )}
+              <FormError form={form} name="pic2.contact" /> {/* ✅ replaced inline error */}
             </div>
           </div>
         </div>

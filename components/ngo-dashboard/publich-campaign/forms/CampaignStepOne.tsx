@@ -6,18 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import FormError from "./FormError";
 
 export default function CampaignStepOne({ form }: { form: UseFormReturn<CampaignFormInput> }) {
   const { errors } = form.formState;
   
-  // Watch goal amount to calculate the split in real-time
   const goalAmountStr = form.watch("goal_amount"); 
   const goalAmount = parseFloat(goalAmountStr as unknown as string) || 0;
 
   const today = new Date();
   today.setDate(today.getDate() + 7);
 
-  // STRICT RULE: All campaigns follow 20/40/40
   const phases = [
     { label: 'Phase 1: Mobilization', percent: 20, color: 'green', desc: 'Initial disbursement (20%) to start operations.' },
     { label: 'Phase 2: Execution', percent: 40, color: 'blue', desc: 'Major project implementation (40%).' },
@@ -45,7 +44,6 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
               <Label className="text-sm">Category</Label>
               <Select 
                   onValueChange={(val) => {
-                    // FIX: Cast 'val' to the specific type expected by the form
                     form.setValue("category", val as CampaignFormInput["category"]); 
                   }}
                   defaultValue={form.watch("category")}
@@ -54,7 +52,6 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Make sure these values match your Schema exactly */}
                     <SelectItem value="Disaster Relief">Disaster Relief</SelectItem>
                     <SelectItem value="Education">Education</SelectItem>
                     <SelectItem value="Hunger">Hunger & Food Security</SelectItem>
@@ -62,7 +59,7 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                     <SelectItem value="Community">Community Development</SelectItem>
                   </SelectContent>
                 </Select>
-              {errors.category && <p className="text-red-500 text-xs">{errors.category.message}</p>}
+              <FormError form={form} name="category" /> {/* ✅ replaced inline error */}
             </div>
 
             {/* Title */}
@@ -73,7 +70,7 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                 placeholder="e.g., Clean Water for Rural Schools"
                 className={`bg-white ${errors.title ? "border-red-500" : ""}`}
               />
-              {errors.title && <p className="text-red-500 text-xs">{errors.title.message}</p>}
+              <FormError form={form} name="title" /> {/* ✅ replaced inline error */}
             </div>
 
             {/* Description */}
@@ -84,7 +81,7 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                 placeholder="Brief overview of the campaign..."
                 className={`w-full bg-white h-32 ${errors.description ? "border-red-500" : ""}`}
               />
-              {errors.description && <p className="text-red-500 text-xs">{errors.description.message}</p>}
+              <FormError form={form} name="description" /> {/* ✅ replaced inline error */}
             </div>
 
             {/* Photo & Goal & Date */}
@@ -93,11 +90,24 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                 <Label className="text-sm">Target Amount (MYR)</Label>
                 <Input
                   type="number"
-                  {...form.register("goal_amount")}
                   placeholder="50000"
+                  {...form.register("goal_amount", {
+                    onChange: (e) => {
+                      const val = e.target.value;
+                      if (parseFloat(val) <= 0) {
+                        form.setValue("goal_amount", "");
+                      }
+                    }
+                  })}
+                  min="50"
+                  onKeyDown={(e) => {
+                    if (["-", "e", "E", "+"].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className={`bg-white ${errors.goal_amount ? "border-red-500" : ""}`}
                 />
-                 {errors.goal_amount && <p className="text-red-500 text-xs">{errors.goal_amount.message}</p>}
+                <FormError form={form} name="goal_amount" /> {/* ✅ replaced inline error */}
               </div>
 
               <div className="space-y-2">
@@ -108,16 +118,22 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                   className={`bg-white ${errors.end_date ? "border-red-500" : ""}`}
                   min={today.toISOString().split("T")[0]}
                 />
+                <FormError form={form} name="end_date" /> {/* ✅ added error */}
               </div>
             </div>
              <div className="space-y-2">
               <Label className="text-sm">Cover Image</Label>
-              <Input type="file" {...form.register("photo")} className="bg-white" />
+              <Input type="file" 
+              {...form.register("photo")} 
+              className="bg-white" 
+              accept="image/jpeg,image/png,image/jpg"
+              />
+              <FormError form={form} name="photo" /> {/* ✅ added error */}
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Milestones (ALWAYS 3 CARDS) */}
+        {/* RIGHT COLUMN: Milestones */}
         <div className="rounded-md border overflow-hidden h-fit">
           <div className="bg-[#193046] p-4 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-white">🎯 Milestones & Budget</h2>
@@ -161,9 +177,7 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                           placeholder={`e.g. ${isFirst ? 'Procurement' : 'Construction'}`}
                           className="text-sm font-medium"
                         />
-                         {errors.milestones?.[i]?.title && (
-                            <p className="text-red-500 text-xs mt-1">{errors.milestones[i]?.title?.message}</p>
-                         )}
+                        <FormError form={form} name={`milestones.${i}.title`} /> {/* ✅ replaced inline error */}
                       </div>
                       <div>
                         <Textarea
@@ -171,9 +185,7 @@ export default function CampaignStepOne({ form }: { form: UseFormReturn<Campaign
                           placeholder="Describe exactly what you will do with this fund tranche..."
                           className="h-16 text-sm resize-none"
                         />
-                         {errors.milestones?.[i]?.description && (
-                            <p className="text-red-500 text-xs mt-1">{errors.milestones[i]?.description?.message}</p>
-                         )}
+                        <FormError form={form} name={`milestones.${i}.description`} /> {/* ✅ replaced inline error */}
                       </div>
                     </div>
                   </div>

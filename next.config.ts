@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "tsdtxolyogjpmbtogfmr.supabase.co", // 👈 add your Supabase project domain
       },
+      {
+        protocol: 'https',
+        hostname: 'white-changing-swordfish-666.mypinata.cloud',
+        pathname: '/ipfs/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'gateway.pinata.cloud',
+        pathname: '/ipfs/**',
+      },
     ],
   },
 };

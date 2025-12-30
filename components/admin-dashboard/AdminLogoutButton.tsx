@@ -1,32 +1,38 @@
-//components/admin-dashboard/AdminLogoutButton.tsx
-
 "use client";
 
-import { LogOut } from "lucide-react";
 import createClient from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function AdminLogoutButton() {
   const supabase = createClient();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Force a hard refresh to clear all browser states
-    window.location.href = "/login";
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      toast.success("Admin logged out successfully");
+      
+      // Redirect to home or login page
+      router.push("/");
+      router.refresh(); // Clears any cached server-side auth states
+    } catch (error: any) {
+      toast.error("Logout failed: " + error.message);
+    }
   };
 
   return (
-    <button
+    <Button 
+      variant="ghost" 
       onClick={handleLogout}
-      className={cn(
-        "flex w-full items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium",
-        "text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
-      )}
+      className="w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700 font-medium"
     >
-      <LogOut className="h-5 w-5 shrink-0" />
-      <span>Sign Out</span>
-    </button>
+      <LogOut className="h-5 w-5" />
+      Logout
+    </Button>
   );
 }

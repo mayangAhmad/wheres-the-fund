@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Campaign } from '@/context/CampaignsContext';
+import { Campaign } from '@/types/ngo';
 import wsrvLoader from '@/lib/services/image-service';
 
 // Helper to determine status strictly

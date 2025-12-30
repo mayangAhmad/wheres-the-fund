@@ -3,7 +3,7 @@
 import { useFilteredCampaigns } from '@/hooks/useFilteredCampaigns' 
 import { Skeleton } from "@/components/ui/skeleton"
 import CampaignCard from '@/components/campaigns/CampaignCard' 
-import { Campaign } from '@/context/CampaignsContext'
+import { Campaign } from '@/types/ngo';
 
 interface CampaignGridProps {
   filterStatus: string

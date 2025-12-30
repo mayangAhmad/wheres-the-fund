@@ -7,9 +7,9 @@ export default function HeroCarouselSkeleton() {
       {/* Carousel Track Skeleton */}
       <div className="flex gap-5 overflow-hidden py-4 px-2 -my-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="w-1/3 flex-shrink-0 flex flex-col space-y-3">
+          <div key={i} className="w-1/3 shrink-0 flex flex-col space-y-3">
             {/* Image Placeholder */}
-            <div className="w-full aspect-[4/3] bg-gray-200 rounded-xl" />
+            <div className="w-full aspect-4/3 bg-gray-200 rounded-xl" />
             
             {/* Content Placeholders */}
             <div className="px-1 space-y-2">

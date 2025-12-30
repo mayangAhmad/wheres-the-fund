@@ -6,7 +6,6 @@ import { Contract, parseUnits } from "ethers";
 import { createKmsSigner } from "@/lib/services/kms-service";
 import CampaignABI from "@/lib/abi/CampaignFactory.json";
 
-// --- CONFIGURATION ---
 const CONTRACT_ADDRESS = process.env.CAMPAIGN_FACTORY_ADDRESS!;
 const QUORUM_CHAIN_ID = parseInt(process.env.QUORUM_CHAIN_ID || "1337", 10);
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY!;
@@ -14,7 +13,6 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
 
 const stripe = new Stripe(STRIPE_SECRET);
 
-// Blockchain Types
 const EIP712_DOMAIN = {
     name: "NGOPlatform",
     version: "1",
@@ -31,246 +29,214 @@ const TYPES = {
     ],
 };
 
-export async function POST(req: Request) {
-    console.log("🔔 Webhook hit! Starting process...");
+interface Allocation {
+    index: number;
+    amount: number;
+    id?: string;
+    isEscrow: boolean;
+}
 
+export async function POST(req: Request) {
     const body = await req.text();
     const headersList = await headers();
     const signature = headersList.get("Stripe-Signature") as string;
     let event: Stripe.Event;
 
-    // 1. VERIFY SIGNATURE
     try {
         event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
     } catch (err: any) {
-        console.error(`⚠️ Webhook signature failed:`, err.message);
         return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
     }
 
-    // 2. HANDLE SUCCESSFUL PAYMENT
     if (event.type === "payment_intent.succeeded") {
-        let createDonationIds: string[] = []; // Track IDs for rollback
-
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const paymentId = paymentIntent.id;
-
-        // Metadata contains what we need (passed during checkout creation)
+        
         const { campaignId, donorId } = paymentIntent.metadata;
         const amountRM = paymentIntent.amount / 100;
 
-        if (!campaignId || !donorId) {
-            console.error("❌ MISSING METADATA");
-            return new NextResponse("Missing Metadata", { status: 400 });
-        }
-
-        console.log(`💰 Processing RM${amountRM} for Campaign ${campaignId}`);
+        if (!campaignId || !donorId) return new NextResponse("Missing Metadata", { status: 400 });
 
         try {
-            // A. IDEMPOTENCY CHECK
-            const { data: existingDonation } = await supabaseAdmin
+            // 1. IDEMPOTENCY CHECK
+            const { data: existing } = await supabaseAdmin
                 .from("donations")
-                .select("id, status")
-                .eq("stripe_payment_id", paymentId)
-                .limit(1); // Check if ANY row exists for this payment
+                .select("status")
+                .eq("stripe_payment_id", paymentId);
 
-            // If we find any row that is completed, we stop.
-            if (existingDonation && existingDonation.length > 0) {
-                const isCompleted = existingDonation.some((d: any) => d.status === 'completed');
-                if (isCompleted) {
-                    console.log("⚠️ Already Processed. Skipping.");
-                    return new NextResponse("Already Processed", { status: 200 });
+            if (existing?.some(d => d.status === 'completed')) {
+                return new NextResponse("Already Processed", { status: 200 });
+            }
+
+            // 2. FETCH DATA
+            const [userProfileRes, milestonesRes, campaignRes] = await Promise.all([
+                supabaseAdmin.from("users").select("wallet_address, kms_key_id").eq("id", donorId).single(),
+                supabaseAdmin.from("milestones").select("*").eq("campaign_id", campaignId).order("milestone_index", { ascending: true }),
+                supabaseAdmin.from("campaigns")
+                  .select(`*, ngo_profiles!inner (stripe_account_id)`)
+                  .eq("id", campaignId)
+                  .single()
+            ]);
+
+            if (!userProfileRes.data || !campaignRes.data) throw new Error("Required data not found");
+
+            const milestones = milestonesRes.data || [];
+            const userProfile = userProfileRes.data;
+            const currentCampaign = campaignRes.data;
+            const ngoStripeId = (currentCampaign.ngo_profiles as any)?.stripe_account_id;
+
+            // 3. 💡 DYNAMIC ALLOCATION & SPILLOVER LOGIC (M1 -> M2 -> M3)
+            const allocations: Allocation[] = [];
+            let remainingToAllocate = amountRM;
+            let runningTotal = Number(currentCampaign.collected_amount || 0);
+
+            for (const m of milestones) {
+                const milestoneTarget = Number(m.target_amount);
+                
+                if (runningTotal < milestoneTarget) {
+                    const roomInThisMilestone = milestoneTarget - runningTotal;
+                    const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
+
+                    if (amountForThisMilestone > 0) {
+                        allocations.push({
+                            index: m.milestone_index,
+                            amount: amountForThisMilestone,
+                            id: m.id,
+                            // It's escrowed if it's NOT the current index being funded (e.g., Spillover to M3)
+                            isEscrow: m.milestone_index > currentCampaign.current_milestone_index
+                        });
+                        
+                        remainingToAllocate -= amountForThisMilestone;
+                        runningTotal += amountForThisMilestone;
+                    }
+                }
+                if (remainingToAllocate <= 0) break;
+            }
+
+            // 4. EXECUTE TRANSFERS & DB INSERTS
+            let directRMForCampaign = 0;
+            let escrowRMForCampaign = 0;
+
+            for (const a of allocations) {
+                if (!a.isEscrow) {
+                    directRMForCampaign += a.amount;
+                    if (ngoStripeId) {
+                        try {
+                            await stripe.transfers.create({
+                                amount: Math.round(a.amount * 100),
+                                currency: 'myr',
+                                destination: ngoStripeId,
+                                description: `Release for ${currentCampaign.title} - M${a.index + 1}`,
+                                metadata: { paymentIntentId: paymentId }
+                            });
+                        } catch (err) { console.error("❌ Stripe Transfer Failed:", err); }
+                    }
+                } else {
+                    escrowRMForCampaign += a.amount;
+                }
+
+                await supabaseAdmin.from("donations").insert({
+                    campaign_id: campaignId,
+                    donor_id: donorId,
+                    amount: a.amount,
+                    stripe_payment_id: paymentId,
+                    milestone_index: a.index,
+                    milestone_id: a.id,
+                    held_in_escrow: a.isEscrow,
+                    status: a.isEscrow ? "escrowed_awaiting_proof" : "pending_blockchain_sync"
+                });
+            }
+
+            // 5. UPDATE CAMPAIGN & MILESTONE STATUS
+            const newTotalCollected = (currentCampaign.collected_amount || 0) + amountRM;
+            
+            // Find the highest milestone index that is now fully funded
+            const lastFundedMilestone = [...milestones]
+                .reverse()
+                .find(m => newTotalCollected >= Number(m.target_amount));
+
+            const newIndex = lastFundedMilestone 
+                ? Math.max(currentCampaign.current_milestone_index, lastFundedMilestone.milestone_index) 
+                : currentCampaign.current_milestone_index;
+
+            await supabaseAdmin.from("campaigns").update({
+                collected_amount: newTotalCollected,
+                total_released: (currentCampaign.total_released || 0) + directRMForCampaign,
+                escrow_balance: (currentCampaign.escrow_balance || 0) + escrowRMForCampaign,
+                current_milestone_index: newIndex, 
+                donations_count: (currentCampaign.donations_count || 0) + 1,
+                last_donation_at: new Date().toISOString()
+            }).eq("id", campaignId);
+
+            // Update milestones and Notify NGO
+            for (const m of milestones) {
+                // If the milestone is now fully funded and was previously active
+                if (newTotalCollected >= Number(m.target_amount) && m.status === 'active') {
+                    await supabaseAdmin.from("milestones").update({ status: 'pending_proof' }).eq("id", m.id);
+                    
+                    if (currentCampaign.ngo_id) {
+                        await supabaseAdmin.from("notifications").insert({
+                            user_id: currentCampaign.ngo_id,
+                            message: `🎯 GOAL REACHED: Phase ${m.milestone_index + 1} ("${m.title}") is fully funded! Upload proof now to release escrow.`,
+                            is_read: false,
+                            created_at: new Date().toISOString()
+                        });
+                    }
                 }
             }
 
-            // B. FETCH USER KEY
-            const { data: userProfile } = await supabaseAdmin
-                .from("users")
-                .select("wallet_address, kms_key_id")
-                .eq("id", donorId)
-                .single();
+            // Standard Donation Receipt Notification for NGO
+            if (currentCampaign.ngo_id) {
+                await supabaseAdmin.from("notifications").insert({
+                    user_id: currentCampaign.ngo_id,
+                    message: `🎉 New Donation: RM ${amountRM} received for "${currentCampaign.title}".`,
+                    is_read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
 
-            if (!userProfile) throw new Error("User profile not found");
+            // 6. BLOCKCHAIN SYNC
+            const syncBlockchain = async () => {
+                try {
+                    const signer = createKmsSigner(userProfile.kms_key_id!);
+                    const campaignContract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
+                    const onChainId = BigInt(currentCampaign.on_chain_id);
+                    let currentNonce = Number(await campaignContract.nonces(await signer.getAddress()));
 
-            // C. FETCH MILESTONES & CALCULATE TOTALS
-            const { data: milestones } = await supabaseAdmin
-                .from("milestones")
-                .select("*")
-                .eq("campaign_id", campaignId)
-                .order("milestone_index", { ascending: true });
+                    for (const alloc of allocations) {
+                        const amountWei = parseUnits(alloc.amount.toFixed(2), 18);
+                        const paymentRef = `${paymentId}_M${alloc.index}`;
+                        const value = { onChainId, amount: amountWei, paymentRef, nonce: currentNonce };
 
-            const { data: allDonations } = await supabaseAdmin
-                .from("donations")
-                .select("amount, milestone_index")
-                .eq("campaign_id", campaignId);
+                        const sig = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
+                        const tx = await campaignContract.donateWithSignature(onChainId, amountWei, paymentRef, currentNonce, sig);
+                        
+                        await supabaseAdmin.from("donations")
+                            .update({ 
+                                on_chain_tx_hash: tx.hash, 
+                                status: (alloc.index <= newIndex && !alloc.isEscrow) ? "completed" : "escrowed_awaiting_proof" 
+                            })
+                            .match({ stripe_payment_id: paymentId, milestone_index: alloc.index });
 
-            const totals: Record<number, number> = {};
-            allDonations?.forEach((d) => {
-                totals[d.milestone_index] = (totals[d.milestone_index] || 0) + d.amount;
+                        currentNonce++;
+                        await tx.wait(1);
+                    }
+                } catch (bcError) { console.error("🔗 Blockchain Sync Error:", bcError); }
+            };
+
+            syncBlockchain(); 
+
+            // Notify Donor
+            await supabaseAdmin.from("notifications").insert({
+                user_id: donorId,
+                message: `Your donation of RM${amountRM} to "${currentCampaign.title}" was successful!`,
+                created_at: new Date().toISOString()
             });
 
-            // D. PREPARE BLOCKCHAIN
-            console.log("🔐 Signing with KMS...");
-            const signer = createKmsSigner(userProfile.kms_key_id!);
-            const signerAddress = await signer.getAddress();
-            const campaignContract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
-
-            // Get Nonce ONCE
-            let currentNonce = Number(await campaignContract.nonces(signerAddress));
-
-            const { data: campaignData } = await supabaseAdmin
-                .from("campaigns")
-                .select("on_chain_id")
-                .eq("id", campaignId)
-                .single();
-            const onChainId = BigInt(campaignData?.on_chain_id);
-
-            // E. THE SPLIT LOOP (Exact same logic as your manual API)
-            let remainingToAllocate = amountRM;
-            let txHashes: string[] = [];
-
-            for (const m of (milestones || [])) {
-                if (remainingToAllocate <= 0) break;
-
-                const currentRaised = totals[m.milestone_index] || 0;
-                const spaceLeft = m.target_amount - currentRaised;
-
-                // If it's the last milestone, dump everything here
-                const isLastOne = (m.milestone_index === milestones![milestones!.length - 1].milestone_index);
-
-                if (spaceLeft <= 0 && !isLastOne) continue;
-
-                let allocation = 0;
-                if (isLastOne) {
-                    allocation = remainingToAllocate;
-                } else {
-                    allocation = Math.min(remainingToAllocate, spaceLeft);
-                }
-
-                if (allocation > 0) {
-                    console.log(`>>> Allocating RM ${allocation} to Milestone ${m.milestone_index}`);
-
-                    // 1. INSERT TO DB
-                    const { data: donationRecord, error } = await supabaseAdmin
-                        .from("donations")
-                        .insert({
-                            campaign_id: campaignId,
-                            donor_id: donorId,
-                            amount: allocation,
-                            stripe_payment_id: paymentId,
-                            status: "Processing",
-                            milestone_index: m.milestone_index
-                        })
-                        .select("id")
-                        .single();
-
-                    if (error) throw new Error(`DB Insert Error: ${error.message}`);
-                    createDonationIds.push(donationRecord.id);
-
-                    // 2. SIGN EIP-712
-                    const amountWei = parseUnits(allocation.toFixed(2), 18);
-
-                    const value = {
-                        onChainId: onChainId,
-                        amount: amountWei,
-                        paymentRef: `${paymentId}_M${m.milestone_index}`, // Unique Ref
-                        nonce: currentNonce,
-                    };
-
-                    const sig = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
-
-                    // 3. SEND TRANSACTION
-                    console.log("🔗 Sending to Blockchain...");
-                    const tx = await campaignContract.donateWithSignature(
-                        onChainId,
-                        amountWei,
-                        `${paymentId}_M${m.milestone_index}`,
-                        currentNonce,
-                        sig
-                    );
-
-                    console.log("✅ Tx Sent:", tx.hash);
-                    txHashes.push(tx.hash);
-
-                    // 4. UPDATE DB
-                    await supabaseAdmin
-                        .from("donations")
-                        .update({ on_chain_tx_hash: tx.hash, status: "completed" })
-                        .eq("id", donationRecord.id);
-
-                    const newTotalForMilestone = currentRaised + allocation;
-
-                    // If we reached or exceeded the target
-                    if (newTotalForMilestone >= m.target_amount) {
-                        console.log(`🔒 Milestone ${m.milestone_index} capped! Updating status to pending_proof...`);
-
-                        await supabaseAdmin
-                            .from("milestones")
-                            .update({ status: "pending_proof" })
-                            .eq("id", m.id);
-                    }
-
-                    // 5. UPDATE LOOP
-                    remainingToAllocate -= allocation;
-                    currentNonce++;
-                    await tx.wait(); // Wait for mining to be safe
-                }
-            }
-
-// F. UPDATE CAMPAIGN TOTALS
-const { data: currentCampaign } = await supabaseAdmin
-    .from("campaigns")
-    .select("collected_amount, goal_amount, donations_count, title, status")
-    .eq("id", campaignId)
-    .single();
-
-const goal = currentCampaign?.goal_amount || 0;
-const newTotal = (currentCampaign?.collected_amount || 0) + amountRM;
-const newCount = (currentCampaign?.donations_count || 0) + 1;
-const now = new Date().toISOString();
-
-// Determine new status based on your new Enum logic
-let newStatus = currentCampaign?.status || 'Ongoing';
-
-// Only flip to 'Completed' if it's currently 'Ongoing' and target is met
-if (newStatus === 'Ongoing' && newTotal >= goal) {
-    newStatus = 'Completed'; 
-}
-
-// ✅ COMBINED UPDATE: Update everything in one single database call
-const { error: updateError } = await supabaseAdmin
-    .from("campaigns")
-    .update({
-        collected_amount: newTotal,
-        donations_count: newCount,
-        last_donation_at: now,
-        status: newStatus
-    })
-    .eq("id", campaignId);
-
-if (updateError) {
-    console.error("❌ Error updating campaign totals:", updateError);
-}
-
-// G. NOTIFICATIONS
-await supabaseAdmin
-    .from("notifications")
-    .insert({
-        user_id: donorId,
-        message: `Your donation of RM${amountRM} to "${currentCampaign?.title}" has been processed!`,
-    });
-
-console.log(`🎉 Webhook Process Complete! Campaign Status: ${newStatus}`);
+            return new NextResponse("Processed", { status: 200 });
 
         } catch (error: any) {
-            console.error("❌ Logic Failed:", error);
-
-            // Cleanup failed rows
-            if (createDonationIds.length > 0) {
-                await supabaseAdmin
-                    .from("donations")
-                    .update({ status: "Failed_Webhook", error_log: error.message })
-                    .in("id", createDonationIds);
-            }
+            console.error("❌ Webhook Logic Failed:", error);
             return new NextResponse(`Error: ${error.message}`, { status: 500 });
         }
     }

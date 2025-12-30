@@ -8,10 +8,12 @@ export interface Milestone {
   description: string;
   funds_allocated_percent: number;
   target_amount: number;
-  status: 'locked' | 'active' | 'pending_review' | 'approved' | 'rejected';
-  proof_description: string | null;
-  proof_images: string[] | null;   // JSONB usually returns as array
-  proof_invoices: string[] | null; // JSONB usually returns as array
+  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'completed';
+  proof_description?: string;
+  proof_images?: string[];
+  proof_invoices?: string[];
+  ipfs_cid?: string;      // For Transparency Card
+  payout_tx_hash?: string | null; // For Blockchain Proof
   submission_date: string | null;
   auditor_remarks: string | null;
   approved_at: string | null;
@@ -22,33 +24,33 @@ export interface Milestone {
 export interface CampaignSummary {
   id: string;
   title: string;
-  status: string | null;
-  collected_amount: number | null;
+  status: string;
+  collected_amount: number;
   created_at: string;
   tx_hash: string | null;
 }
 
 export interface Campaign extends CampaignSummary {
-  ngo_id: string | null;
-  ngo_name: string | null;
-  description: string | null;
-  category: string | null;
-  image_url: string | null;
-  goal_amount: number | null;
-  end_date: string | null;
+  ngo_id: string;
+  ngo_name: string;
+  description: string;
+  category: string;
+  image_url: string;
+  goal_amount: number;
+  end_date: string;
   on_chain_id: number | null;
   wallet_address: string | null;
   contract_address: string | null;
-  milestones: Milestone[] | null;
+  milestones: Milestone[];
 
-  problems: string[] | null;
-  solutions: string[] | null;
-  background: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  campaign_address: string | null;
-  pic1: Record<string, any> | null;
-  pic2: Record<string, any> | null;
+  problems: string[];
+  solutions: string[];
+  background: string;
+  contact_email: string;
+  contact_phone: string;
+  campaign_address: string;
+  pic1: Record<string, any>;
+  pic2: Record<string, any>;
 }
 
 export interface BaseUser {

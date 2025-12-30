@@ -1,3 +1,5 @@
+// app/(app)/admin/dashboard/page.tsx
+
 import { supabaseAdmin } from "@/lib/supabase/admin"; // <--- Use Admin Client (Bypasses RLS)
 import AdminDashboardClient from "@/components/admin-dashboard/AdminDashboardClient";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";

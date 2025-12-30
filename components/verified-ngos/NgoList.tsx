@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Search, SlidersHorizontal, ChevronDown, BadgeCheck, Building2, Globe, ArrowRight } from 'lucide-react'
 import { useDebounce } from 'use-debounce' 
 import { NgoProfileWithUser } from '@/app/(public)/ngos/page'
+import wsrvLoader from '@/lib/services/image-service'
 
 // ----------------------------------------------------------------------
 // 1. Reusable Dropdown Component (From your example)
@@ -123,7 +124,8 @@ export default function NgoList({ initialNgos }: NgoListProps) {
       <section className="relative h-[45vh] lg:h-[50vh] w-full flex items-center justify-center overflow-hidden">
         {/* You can replace this with a specific NGO background image */}
         <Image
-          src="/hero-image.jpg" 
+          loader={wsrvLoader}
+          src="https://tsdtxolyogjpmbtogfmr.supabase.co/storage/v1/object/public/asset/hero-image.jpg" 
           alt="NGOs background"
           fill
           priority

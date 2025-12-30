@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Flag } from "lucide-react";
-import MilestoneCard, { Milestone } from "./MilestoneCard";
+import MilestoneCard from "./MilestoneCard";
+import { Milestone } from "@/types/ngo";
 
 interface Props {
   milestones?: Milestone[];

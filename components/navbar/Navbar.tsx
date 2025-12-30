@@ -162,7 +162,7 @@ export default function Nav() {
   );
 }
 
-const Logo = () => (
+export const Logo = () => (
   <Link href="/" className="flex items-center gap-2">
     <Image
       src="/wtf-logo.svg"

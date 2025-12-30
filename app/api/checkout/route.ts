@@ -1,5 +1,3 @@
-//app/api/checkout/route.ts
-
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import Stripe from 'stripe';
@@ -18,9 +16,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         
-        // 1. Get or Create Stripe Customer for Donor
+        // 1. Get or Create Stripe Customer
         let stripeCustomerId = null;
-        
         const { data: userProfile } = await supabaseAdmin
             .from("donor_profiles")
             .select("stripe_customer_id")
@@ -36,7 +33,6 @@ export async function POST(request: Request) {
                 metadata: { userId: user.id }
             });
             stripeCustomerId = customer.id;
-
             await supabaseAdmin.from("donor_profiles").upsert({ 
                 user_id: user.id,
                 stripe_customer_id: stripeCustomerId 
@@ -51,52 +47,46 @@ export async function POST(request: Request) {
             .single();
 
         if (!campaign) throw new Error("Campaign not found.");
-
         const destAccountId = campaign.ngo_profiles?.stripe_account_id;
 
-        // 3. Get All Milestones
+        // 3. Get Fixed 3 Milestones
         const { data: milestones } = await supabaseAdmin
             .from("milestones")
             .select("*")
             .eq("campaign_id", campaignId)
             .order("milestone_index", { ascending: true });
 
-        if (!milestones || milestones.length === 0) {
-            throw new Error("Campaign has no milestones set up.");
-        }
+        if (!milestones || milestones.length !== 3) throw new Error("Campaign must have exactly 3 milestones.");
 
-        // 4. Traffic Light Logic
+        // 4. Spillover Calculation Logic
         const currentRaised = Number(campaign.collected_amount || 0);
-        const currentIndices = campaign.current_milestone_index || 0;
-        const currentMilestone = milestones.find(m => m.milestone_index === currentIndices);
+        const currentIndex = campaign.current_milestone_index || 0;
+        const currentMilestone = milestones.find(m => m.milestone_index === currentIndex);
         
         if (!currentMilestone) throw new Error("Current milestone index mismatch.");
 
-        let cumulativeCap = 0;
-        for (const m of milestones) {
-            if (m.milestone_index <= currentIndices) {
-                cumulativeCap += Number(m.target_amount);
-            }
+        // Calculate the cumulative cap up to the current milestone
+        let currentMilestoneCap = 0;
+        for (let i = 0; i <= currentIndex; i++) {
+            currentMilestoneCap += Number(milestones[i].target_amount);
         }
 
         const donationAmount = Number(amount);
-        const willExceedCap = (currentRaised + donationAmount) > cumulativeCap;
-        const isMilestoneLocked = currentMilestone.status !== 'active';
+        const isCurrentMilestoneOpen = currentMilestone.status === 'active';
 
-        let transferData = null;
-        let dashboardDescription = ""; 
+        // Calculate split: Immediate Release vs Escrowed (Spillover)
+        // Space left in the currently active phase
+        const spaceInCurrentPhase = Math.max(0, currentMilestoneCap - currentRaised);
+        
+        // Direct amount is only what can fit in the currently active milestone
+        const directAmount = isCurrentMilestoneOpen ? Math.min(donationAmount, spaceInCurrentPhase) : 0;
+        
+        // Everything else is escrowed (to be handled by the dynamic Webhook loop)
+        const escrowAmount = Math.max(0, donationAmount - directAmount);
 
-        if (destAccountId && !willExceedCap && !isMilestoneLocked) {
-            // GREEN LIGHT: Direct Transfer
-            transferData = {
-                destination: destAccountId, 
-            };
-            dashboardDescription = `Donation to: ${campaign.title}`;
-        } else {
-            // RED LIGHT: Escrow (Held in Platform)
-            transferData = undefined; 
-            dashboardDescription = `🔒 ESCROW: ${campaign.title} (Held in WheresTheFund)`;
-        }
+        // Define Transfer Data
+        // Automatic transfer only if 100% of the donation is for the active milestone
+        const canUseAutomaticTransfer = destAccountId && escrowAmount === 0 && isCurrentMilestoneOpen;
 
         // 5. Create Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({
@@ -104,33 +94,26 @@ export async function POST(request: Request) {
             currency: 'myr',
             customer: stripeCustomerId,
             payment_method_types: ['card', 'fpx'],
-            
-            // --- UPDATED FIELD: USE SUFFIX INSTEAD ---
-            description: dashboardDescription, 
-            
-            // Fix: statement_descriptor is deprecated for cards. Use suffix.
-            // Result on Bank Statement: "YOUR_STRIPE_NAME * WheresTheFund"
+            description: escrowAmount > 0 
+                ? `Partial Escrow: ${campaign.title}` 
+                : `Direct Donation: ${campaign.title}`,
             statement_descriptor_suffix: "WheresTheFund", 
-            // -----------------------------------------
 
             metadata: {
                 campaignId: campaignId,
                 donorId: user.id, 
-                donorEmail: user.email || "unknown", 
-                milestoneIndex: currentIndices.toString(),
-                escrowStatus: transferData ? "DIRECT_TRANSFER" : "HELD_IN_PLATFORM" 
+                // We pass these amounts as hints for the Webhook to verify
+                directAmount: directAmount.toString(),
+                escrowAmount: escrowAmount.toString(),
+                totalAmount: donationAmount.toString()
             },
-            
-            transfer_data: transferData || undefined, 
+            transfer_data: canUseAutomaticTransfer ? { destination: destAccountId } : undefined, 
         });
 
         return NextResponse.json({ clientSecret: paymentIntent.client_secret });
 
     } catch (error: any) {
         console.error('PAYMENT ERROR:', error);
-        return NextResponse.json(
-            { error: error.message },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

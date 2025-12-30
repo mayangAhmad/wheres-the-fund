@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 const NEW_ADMIN_ADDRESS = "0xb727D012E6881802Dd60B4Af3CaD2b6B67D26006"; 
 
 // 2. PASTE YOUR DEPLOYED CONTRACT ADDRESS HERE
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
+const CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"; 
 
 async function main() {
   // A. Connect as the "Deployer" (Account #0)

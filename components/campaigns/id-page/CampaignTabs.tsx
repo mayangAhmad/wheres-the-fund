@@ -1,9 +1,11 @@
+// CampaignTabs.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
 import OurStory from "./OurStory";
 import MilestoneTabContent from "../milestones/MilestoneTabContent";
-import { Milestone } from "../milestones/MilestoneCard";
+import { Milestone } from "@/types/ngo";
 import CircuitBoard from "../flow-of-funds/CircuitBoard";
 import HistoryTable from "@/components/donor-dashboard/history/HistoryTable";
 import createClient from '@/lib/supabase/client';

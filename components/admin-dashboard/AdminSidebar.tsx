@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
@@ -12,6 +13,7 @@ import {
   Settings 
 } from "lucide-react";
 import AdminLogoutButton from "./AdminLogoutButton";
+import { Logo } from "../navbar/Navbar";
 
 const sidebarItems = [
   {
@@ -29,11 +31,6 @@ const sidebarItems = [
     href: "/admin/users",
     icon: Users,
   },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
 ];
 
 export default function Sidebar() {
@@ -42,8 +39,18 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-white flex flex-col md:flex">
       {/* 1. Logo Area */}
+
+
+      
       <div className="flex h-16 items-center border-b px-6">
-        <span className="text-lg font-bold text-gray-900">Admin Panel</span>
+             <Image
+            src="/wtf-logo.svg"
+            alt="WheresTheFund Logo"
+            width={150}
+            height={40}
+            className="w-32 h-auto"
+            priority
+          />
       </div>
 
       {/* 2. Navigation Links */}

@@ -1,4 +1,3 @@
-// @/components/forms/steps/CampaignStepThree.tsx
 "use client";
 
 import { UseFormReturn, useFieldArray } from "react-hook-form";
@@ -6,13 +5,14 @@ import { CampaignFormInput } from "@/lib/validation/campaignSchema";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import FormError from "./FormError";
 
 interface CampaignStepThreeProps {
   form: UseFormReturn<CampaignFormInput>;
 }
 
 export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
-  const { control, register, formState: { errors } } = form;
+  const { control, register } = form;
 
   const {
     fields: problemFields,
@@ -41,31 +41,29 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
         This section is important for public to know what exactly you are tackling on and how you will execute them.
       </p>
 
-      {/* Responsive grid: auto-fit with minmax */}
       <div className="mt-8 grid gap-10 w-full max-w-6xl mx-auto grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
         
         {/* Background Container */}
         <div className="rounded-md border min-h-[250px] md:min-h-[300px] lg:min-h-[450px] overflow-hidden">
-            <div className="bg-[#193046] p-4">
-                <h2 className="text-lg font-semibold text-white">📖 What is your story?</h2>
+          <div className="bg-[#193046] p-4">
+            <h2 className="text-lg font-semibold text-white">📖 What is your story?</h2>
+          </div>
+          <div className="p-6 space-y-4 bg-gray-50">
+            <Label>Background</Label>
+            <Textarea
+              {...form.register("background")}
+              placeholder="Background of the campaign"
+              maxLength={1000}
+              className="w-full bg-white wrap-break-word whitespace-pre-wrap h-24 md:h-32 lg:h-40"
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{(form.watch("background") || "").length} / 1000 characters</span>
+              <span>{1000 - (form.watch("background") || "").length} left</span>
             </div>
-            <div className="p-6 space-y-4 bg-gray-50">
-                <Label>Background</Label>
-                <Textarea
-                {...form.register("background")}
-                placeholder="Background of the campaign"
-                maxLength={1000}
-                className="w-full bg-white break-words whitespace-pre-wrap h-24 md:h-32 lg:h-40"
-                />
-                <div className="flex justify-between text-xs text-gray-500">
-                <span>{(form.watch("background") || "").length} / 1000 characters</span>
-                <span>{1000 - (form.watch("background") || "").length} left</span>
-                </div>
-                {typeof errors.background?.message === "string" && (
-                <p className="text-red-500 text-sm">{errors.background.message}</p>
-                )}
-            </div>
-            </div>
+            {/* ✅ Use FormError instead of inline error */}
+            <FormError form={form} name="background" />
+          </div>
+        </div>
 
         {/* Problems Container */}
         <div className="rounded-md border min-h-[250px] md:min-h-[300px] lg:min-h-[450px] overflow-hidden">
@@ -79,7 +77,7 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
                   <Textarea
                     {...register(`problems.${index}` as const)}
                     placeholder={`• Problem ${index + 1}`}
-                    className="w-full bg-white break-words whitespace-pre-wrap h-20 md:h-28 lg:h-32"
+                    className="w-full bg-white wrap-break-word whitespace-pre-wrap h-20 md:h-28 lg:h-32"
                   />
                   <Button
                     variant="default"
@@ -91,14 +89,10 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
                     -
                   </Button>
                 </div>
-                {typeof errors.problems?.[index]?.message === "string" && (
-                  <p className="text-red-500 text-sm">{errors.problems[index]?.message}</p>
-                )}
+                {/* ✅ Use FormError for each problem */}
+                <FormError form={form} name={`problems.${index}`} />
               </div>
             ))}
-            {typeof errors.problems?.message === "string" && (
-              <p className="text-red-500 text-sm">{errors.problems.message}</p>
-            )}
             <Button
               variant="outline"
               type="button"
@@ -122,7 +116,7 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
                   <Textarea
                     {...register(`solutions.${index}` as const)}
                     placeholder={`• Solution ${index + 1}`}
-                    className="w-full bg-white break-words whitespace-pre-wrap h-20 md:h-28 lg:h-32"
+                    className="w-full bg-white wrap-break-word whitespace-pre-wrap h-20 md:h-28 lg:h-32"
                   />
                   <Button
                     variant="default"
@@ -134,14 +128,10 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
                     -
                   </Button>
                 </div>
-                {typeof errors.solutions?.[index]?.message === "string" && (
-                  <p className="text-red-500 text-sm">{errors.solutions[index]?.message}</p>
-                )}
+                {/* ✅ Use FormError for each solution */}
+                <FormError form={form} name={`solutions.${index}`} />
               </div>
             ))}
-            {typeof errors.solutions?.message === "string" && (
-              <p className="text-red-500 text-sm">{errors.solutions.message}</p>
-            )}
             <Button
               variant="outline"
               type="button"
@@ -152,7 +142,6 @@ export default function CampaignStepThree({ form }: CampaignStepThreeProps) {
             </Button>
           </div>
         </div>
-
       </div>
     </>
   );

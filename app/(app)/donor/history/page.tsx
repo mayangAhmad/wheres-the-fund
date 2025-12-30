@@ -1,3 +1,4 @@
+// app/%28app%29/donor/history/page.tsx
 import HistoryClientView from "@/components/donor-dashboard/history/HIstoryClientView";
 import { getAuthenticatedUser, getSupabase} from "@/lib/auth/getAuthenticatedUser";
 import { redirect } from "next/navigation";
@@ -16,21 +17,28 @@ export default async function DonorHistoryPage() {
 
   const supabase = await getSupabase();
 
-  const { data: donations, error } = await supabase
-    .from("donations")
-    .select(`
-      id,
-      amount,
-      status,
-      created_at,
-      on_chain_tx_hash,
-      campaigns (
-        title,
-        id
-      )
-    `)
-    .eq("donor_id", user.id) 
-    .order("created_at", { ascending: false });
+  // Corrected Query
+const { data: donations, error } = await supabase
+  .from("donations")
+  .select(`
+    id,
+    amount,
+    status,
+    created_at,
+    on_chain_tx_hash,
+    stripe_payment_id,
+    milestone_index,
+    campaigns (
+      title,
+      id
+    ),
+    milestones ( 
+      ipfs_cid,
+      proof_description
+    )
+  `) 
+  .eq("donor_id", user.id) 
+  .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Supabase History Fetch Error:", JSON.stringify(error, null, 2));

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useNgoUser } from "@/context/NgoUserContext";
+import { useNotifications } from "@/hooks/useNotifications"; // 💡 Import the hook
 import { Home, Heart, Bell, Settings, PlusCircle, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,6 +24,9 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useNgoUser();
+  
+  // ✅ Initialize Real-time Notifications
+  const { unreadCount } = useNotifications(user?.id);
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
   const profileImage = user?.avatar_url || "/placeholder.jpg"; 
@@ -30,7 +34,6 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
   const isProfileComplete = user?.description && user?.website_url;
 
   const handleCreateClick = (e: React.MouseEvent) => {
-    // If incomplete, stop navigation and redirect to settings
     if (!isProfileComplete) {
       e.preventDefault();
       toast.error("Please complete your Organization Profile (Bio & Website) first.");
@@ -45,22 +48,19 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
       
       {/* 1. Header / Logo */}
       <div className={`p-6 border-b border-white/10 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} h-[88px]`}>
-        
-        {/* Profile Image Container */}
         <Link href="/ngo/settings">
-        <div className="relative h-10 w-10 shrink-0">
-          <Image 
-            src={profileImage} 
-            alt={user?.name || "Org"}
-            fill
-            sizes="40px"
-            className="rounded-full object-cover border-2 border-white/10"
-            priority
-          />
-        </div>
+          <div className="relative h-10 w-10 shrink-0">
+            <Image 
+              src={profileImage} 
+              alt={user?.name || "Org"}
+              fill
+              sizes="40px"
+              className="rounded-full object-cover border-2 border-white/10"
+              priority
+            />
+          </div>
         </Link>
         
-        {/* Hide Text when Collapsed */}
         {!isCollapsed && (
           <div className="flex-1 min-w-0 animate-in fade-in duration-300">
               <h1 className="text-sm font-bold tracking-tight truncate" title={user?.name}>
@@ -92,12 +92,13 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
         {/* Links */}
         {sidebarLinks.map((link) => {
           const isActive = pathname === link.href; 
+          const isNotification = link.name === "Notifications";
           
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4"} py-3 rounded-lg transition-colors whitespace-nowrap
+              className={`relative flex items-center ${isCollapsed ? "justify-center px-0" : "px-4"} py-3 rounded-lg transition-colors whitespace-nowrap
                 ${isActive 
                   ? "bg-white/20 text-white font-semibold" 
                   : "text-gray-300 hover:bg-white/10 hover:text-white" 
@@ -107,6 +108,15 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
             >
               <link.icon size={20} />
               {!isCollapsed && <span className="ml-3 animate-in fade-in duration-200">{link.name}</span>}
+
+              {/* 🔴 REAL-TIME NOTIFICATION BADGE */}
+              {isNotification && unreadCount > 0 && (
+                <span className={`absolute flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#182F44] animate-bounce
+                  ${isCollapsed ? "top-2 right-4 h-4 w-4" : "right-4 h-5 w-5"}
+                `}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -114,8 +124,6 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
 
       {/* 3. Footer / Collapse Toggle */}
       <div className="p-4 border-t border-white/10 flex flex-col gap-2">
-        
-        {/* Toggle Button */}
         <button 
           onClick={toggleSidebar}
           className="flex items-center justify-center w-full p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"

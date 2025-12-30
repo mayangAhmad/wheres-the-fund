@@ -23,8 +23,8 @@ export default function SetupChecklist({campaignCount}: SetupChecklistProps) {
   if (hasProfile && hasStripe && hasCampaigns) return null;
 
   // --- 2. CALCULATE PERCENTAGE ---
-  const totalSteps = 3;
-  const completedSteps = (hasProfile ? 1 : 0) + (hasStripe ? 1 : 0) + (hasCampaigns ? 1 : 0);
+  const totalSteps = 2;
+  const completedSteps = (hasProfile ? 1 : 0) + (hasStripe ? 1 : 0);
   const progress = Math.round((completedSteps / totalSteps) * 100);
 
   return (
@@ -43,11 +43,11 @@ export default function SetupChecklist({campaignCount}: SetupChecklistProps) {
             </span>
           </div>
           <p className="text-gray-500 text-sm">
-            Complete these 3 steps to start raising funds.
+            Complete these 2 steps to start launch a campaign.
           </p>
         </div>
 
-        {/* THE 3 STEPS */}
+        {/* THE 2 STEPS */}
         <div className="flex flex-col md:flex-row gap-4 w-full">
           
           {/* STEP 1: Profile */}

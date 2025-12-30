@@ -21,7 +21,7 @@ export default function HomeHero2({ campaigns }: HomeHero2Props) {
         
         {/* 1. BACKGROUND IMAGE */}
         <Image 
-          src="/hero-image.jpg"
+          src="https://tsdtxolyogjpmbtogfmr.supabase.co/storage/v1/object/public/asset/hero-image.jpg"
           alt="Charity Background"
           fill
           priority

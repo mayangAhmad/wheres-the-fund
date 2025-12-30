@@ -21,6 +21,9 @@ contract CampaignFactory is EIP712, Ownable {
         bool closed;
     }
 
+    // CampaignID => MilestoneIndex => IPFS CID (Proof of Work)
+    mapping(uint256 => mapping(uint256 => string)) public milestoneIPFSCIDs;
+
     // 2. Constants
     bytes32 private constant CREATE_CAMPAIGN_TYPEHASH =
         keccak256("CreateCampaign(string title,uint256 targetAmount,uint256 deadline,uint256 nonce)");
@@ -58,7 +61,8 @@ contract CampaignFactory is EIP712, Ownable {
     
     event MilestoneStatusUpdated(
         uint256 indexed campaignId, 
-        uint256 newMilestoneIndex
+        uint256 newMilestoneIndex,
+        string ipfsCID
     );
 
     // 5. Constructor
@@ -84,6 +88,7 @@ contract CampaignFactory is EIP712, Ownable {
         nonces[donor]++;
 
         Campaign storage campaign = campaigns[onChainId];
+        require(block.timestamp < campaign.deadline, "Campaign has ended"); 
         require(campaign.id != 0, "Campaign does not exist");
         require(!campaign.closed, "Campaign is closed");
         
@@ -92,15 +97,20 @@ contract CampaignFactory is EIP712, Ownable {
         emit DonationRecorded(onChainId, donor, amount, paymentRef);
     }
 
-    // --- MILESTONE LOGIC ---
-    function approveMilestone(uint256 campaignId) external onlyOwner {
-        Campaign storage campaign = campaigns[campaignId];
-        require(campaign.id != 0, "Campaign does not exist");
-        require(campaign.currentMilestone < 2, "All milestones already approved");
+    // ---------APPROVE MILESTONE-------------------
+    function approveMilestone(uint256 campaignId, string calldata ipfsCID) external onlyOwner {
+    Campaign storage campaign = campaigns[campaignId];
+    require(campaign.id != 0, "Exists");
+    require(campaign.currentMilestone < 3, "All approved"); // 💡 Changed from 2 to 3
 
-        campaign.currentMilestone += 1;
-        emit MilestoneStatusUpdated(campaignId, campaign.currentMilestone);
+    milestoneIPFSCIDs[campaignId][campaign.currentMilestone] = ipfsCID;
+    campaign.currentMilestone += 1;
+
+    if (campaign.currentMilestone == 3) { // 💡 Changed to match your 3-milestone structure
+        campaign.closed = true;
     }
+    emit MilestoneStatusUpdated(campaignId, campaign.currentMilestone, ipfsCID);
+}
 
     // --- WITHDRAWAL LOGIC ---
     function getWithdrawableAmount(uint256 campaignId) public view returns (uint256) {
@@ -219,10 +229,6 @@ contract CampaignFactory is EIP712, Ownable {
         );
         bytes32 digest = _hashTypedDataV4(structHash);
         return ECDSA.recover(digest, signature);
-    }
-
-    function getCampaign(uint256 id) external view returns (Campaign memory) {
-        return campaigns[id];
     }
 
     function getCampaignCount() external view returns (uint256) {

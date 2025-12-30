@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState, useContext } from 'react';
 import createClient from '@/lib/supabase/client';
-import { CampaignsContext, Campaign } from '@/context/CampaignsContext';
+import { CampaignsContext } from '@/context/CampaignsContext';
 import CampaignHeader from './CampaignHeader';
 import CampaignTabs from './CampaignTabs';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { Campaign, Milestone } from '@/types/ngo';
 
 interface CampaignDetailsProps {
   id: string;
@@ -17,20 +18,7 @@ interface PicData {
   contact: string;
 }
 
-// UPDATE: Added 'pending_proof' and 'completed' to status to prevent them being treated as locked/errors
-interface Milestone {
-  id: string;
-  milestone_index: number;
-  title: string;
-  description: string;
-  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'completed';
-  funds_allocated_percent: number;
-  target_amount: number;
-  proof_description?: string; 
-  proof_images?: string[];    
-  proof_invoices?: string[];  
-}
-
+// 💡 Removed local Milestone interface to avoid conflicts with @/types/ngo
 interface ExtendedData {
   background: string | null;
   problems: string[] | null;
@@ -65,7 +53,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       const supabase = createClient();
 
       // 1. Basic Info
-      let currentBasic = campaigns.find((c) => String(c.id) === String(id));
+      let currentBasic = campaigns.find((c) => String(c.id) === String(id)) as Campaign | undefined;
       
       if (!currentBasic) {
         const { data: fetchedBasic } = await supabase
@@ -79,7 +67,6 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       if (currentBasic) setBasicInfo(currentBasic);
 
       // 2. Extended Info
-      // We fetch milestones(*) which includes proof_description, proof_images, etc.
       const { data: heavyData, error } = await supabase
         .from('campaigns')
         .select(`
@@ -102,7 +89,6 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
           ? heavyData.milestones.sort((a: Milestone, b: Milestone) => a.milestone_index - b.milestone_index)
           : [];
           
-        // Explicitly cast or assign to ensure types match
         setExtendedInfo({ ...heavyData, milestones: sortedMilestones });
       }
 
@@ -132,6 +118,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
     );
   }
 
+  // 💡 FIXED: Added '?? 0' to targetAmount and collectedAmount to satisfy number types
   const headerData = {
     id: basicInfo.id,
     category: basicInfo.category || 'General',
@@ -141,8 +128,8 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
     title: basicInfo.title,
     description: basicInfo.description || '',
     tags: ['Charity'],
-    targetAmount: basicInfo.goal_amount,
-    collectedAmount: basicInfo.collected_amount,
+    targetAmount: basicInfo.goal_amount ?? 0,
+    collectedAmount: (basicInfo.collected_amount ?? 0) as number,
     status: basicInfo.status,
   };
 
