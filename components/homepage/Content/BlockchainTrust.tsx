@@ -34,9 +34,12 @@ export default function BlockchainTrust() {
           
           {/* Left*/}
           <div>
-            
-            
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              viewport={{ once: true }}>
+              <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight">
               Peace of mind is <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-500">
                 part of the process.
@@ -63,6 +66,11 @@ export default function BlockchainTrust() {
               </Link>
               
             </div>
+              
+            </motion.div>
+            
+            
+            
           </div>
 
           {/* Right: The Features */}
@@ -72,8 +80,7 @@ export default function BlockchainTrust() {
                 key={i}
                 initial={{ opacity: 0, x: 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
                 className="bg-white border border-slate-100 p-6 rounded-2xl flex gap-5 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 group"
               >
                 {/* Icon Box */}

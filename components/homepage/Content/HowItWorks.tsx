@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Wallet, LineChart, ArrowRight, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function HowItWorks() {
   const steps = [
@@ -33,13 +34,17 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
         
         {/* Header */}
-        <div className="text-center mb-20">
+        <motion.div 
+          initial={{opacity: 0, y: 20}}
+          whileInView={{opacity: 1, y: 0}}
+          transition={{duration: 0.5, delay: 0.3}}
+          className="text-center mb-20">
           
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900">How It Works</h2>
           <p className="text-slate-500 mt-4 text-lg max-w-2xl mx-auto">
             Start making a measurable difference in three simple steps, backed by the security of the blockchain.
           </p>
-        </div>
+        </motion.div>
 
         {/* Steps Container */}
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -48,7 +53,13 @@ export default function HowItWorks() {
           <div className="hidden md:block absolute top-16 left-[16%] right-[16%] border-t-2 border-dashed border-slate-200 -z-10" />
 
           {steps.map((step, index) => (
-            <div key={index} className="flex flex-col items-center text-center group relative">
+            <motion.div 
+              key={index} 
+              initial={{opacity: 0, y: 20}}
+              whileInView={{opacity: 1, y: 0}}
+              transition={{duration: 0.5, delay: 0.3}}
+
+              className="flex flex-col items-center text-center group relative">
               
               {/* Step Icon Container */}
               <div className="relative w-32 h-32 mb-8">
@@ -75,7 +86,7 @@ export default function HowItWorks() {
               <p className="text-slate-500 leading-relaxed max-w-xs mx-auto text-sm md:text-base">
                 {step.description}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
 

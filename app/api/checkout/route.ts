@@ -8,14 +8,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { amount, campaignId } = body; 
+        const { amount, campaignId, isAnonymous } = body;
 
         // 0. Auth Check
         const user = await getAuthenticatedUser();
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        
+
         // 1. Get or Create Stripe Customer
         let stripeCustomerId = null;
         const { data: userProfile } = await supabaseAdmin
@@ -33,9 +33,9 @@ export async function POST(request: Request) {
                 metadata: { userId: user.id }
             });
             stripeCustomerId = customer.id;
-            await supabaseAdmin.from("donor_profiles").upsert({ 
+            await supabaseAdmin.from("donor_profiles").upsert({
                 user_id: user.id,
-                stripe_customer_id: stripeCustomerId 
+                stripe_customer_id: stripeCustomerId
             });
         }
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         const currentRaised = Number(campaign.collected_amount || 0);
         const currentIndex = campaign.current_milestone_index || 0;
         const currentMilestone = milestones.find(m => m.milestone_index === currentIndex);
-        
+
         if (!currentMilestone) throw new Error("Current milestone index mismatch.");
 
         // Calculate the cumulative cap up to the current milestone
@@ -77,10 +77,10 @@ export async function POST(request: Request) {
         // Calculate split: Immediate Release vs Escrowed (Spillover)
         // Space left in the currently active phase
         const spaceInCurrentPhase = Math.max(0, currentMilestoneCap - currentRaised);
-        
+
         // Direct amount is only what can fit in the currently active milestone
         const directAmount = isCurrentMilestoneOpen ? Math.min(donationAmount, spaceInCurrentPhase) : 0;
-        
+
         // Everything else is escrowed (to be handled by the dynamic Webhook loop)
         const escrowAmount = Math.max(0, donationAmount - directAmount);
 
@@ -94,20 +94,21 @@ export async function POST(request: Request) {
             currency: 'myr',
             customer: stripeCustomerId,
             payment_method_types: ['card', 'fpx'],
-            description: escrowAmount > 0 
-                ? `Partial Escrow: ${campaign.title}` 
+            description: escrowAmount > 0
+                ? `Partial Escrow: ${campaign.title}`
                 : `Direct Donation: ${campaign.title}`,
-            statement_descriptor_suffix: "WheresTheFund", 
+            statement_descriptor_suffix: "WheresTheFund",
 
             metadata: {
                 campaignId: campaignId,
-                donorId: user.id, 
+                donorId: user.id,
                 // We pass these amounts as hints for the Webhook to verify
                 directAmount: directAmount.toString(),
                 escrowAmount: escrowAmount.toString(),
-                totalAmount: donationAmount.toString()
+                totalAmount: donationAmount.toString(),
+                is_anonymous: isAnonymous ? "true" : "false"
             },
-            transfer_data: canUseAutomaticTransfer ? { destination: destAccountId } : undefined, 
+            transfer_data: canUseAutomaticTransfer ? { destination: destAccountId } : undefined,
         });
 
         return NextResponse.json({ clientSecret: paymentIntent.client_secret });

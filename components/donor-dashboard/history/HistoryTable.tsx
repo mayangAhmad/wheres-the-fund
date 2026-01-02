@@ -60,12 +60,21 @@ export default function HistoryTable({ donations, mode }: Props) {
                       <div className="text-[10px] text-orange-600 font-bold uppercase">
                         Phase {donation.milestone_index + 1} Support
                       </div>
-                      <div className="text-[10px] text-gray-400 font-mono">ID: {donation.id.slice(0, 8)}</div>
+                      <div className="text-[10px] text-gray-400 font-mono">ID: {donation.id.slice(0, 8)}...</div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <span className="text-sm font-medium text-gray-900">Anonymous Donor</span>
-                      <div className="text-[10px] text-gray-400 font-mono">ID: {(donation as any).donor_id?.slice(0, 8)}</div>
+                      <span className={`text-sm font-medium ${donation.is_anonymous ? "text-gray-500 italic" : "text-gray-900"}`}>
+                        {donation.is_anonymous 
+                            ? "Anonymous" 
+                            : (donation.users?.name || "Verified Donor")
+                        }
+                      </span>
+                      {!donation.is_anonymous && (
+                        <div className="text-[10px] text-gray-400 font-mono">
+                          ID: {(donation as any).donor_id?.slice(0, 8)}...
+                        </div>
+                    )}
                     </div>
                   )}
                 </td>

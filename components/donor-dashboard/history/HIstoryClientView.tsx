@@ -16,8 +16,12 @@ export interface DonationRecord {
   status: string | null;             
   created_at: string;               
   payment_method: string | null;    
-  milestone_index: number;           
-
+  milestone_index: number; 
+  is_anonymous?: boolean;          
+  users?: {
+    id: string;
+    name: string;
+  }
   // Joined relations (from your Supabase .select() query)
   campaigns: {
     title: string;

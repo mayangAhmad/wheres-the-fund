@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { m } from "framer-motion";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +17,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 milestone_index,
                 campaign_id,
                 campaigns (id, title)`)
-            .eq('donor_id', donorId);
+            .eq('donor_id', donorId)
+            .eq("status", "completed");
 
         if (userError) throw userError;
 
@@ -90,6 +90,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 status: status,
                 userContribution: myContribution
             };
+
 
         });
 

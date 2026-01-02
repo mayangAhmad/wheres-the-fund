@@ -2,6 +2,7 @@
 
 import { ArrowRight, Building2, Heart } from "lucide-react";
 import Link from "next/link";
+import { motion} from "framer-motion";
 
 export default function CallToAction() {
   return (
@@ -14,7 +15,11 @@ export default function CallToAction() {
       {/* Grid Pattern Texture */}
       <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
-      <div className="max-w-5xl mx-auto px-6 relative z-10 text-center">
+      <motion.div
+        initial={{opacity: 0}}
+        whileInView={{opacity: 1}}
+        transition={{duration: 0.5, ease: "easeIn", delay: 0.3}} 
+        className="max-w-5xl mx-auto px-6 relative z-10 text-center">
         
         <h2 className="text-4xl md:text-6xl font-bold text-white mb-8 tracking-tight">
           Ready to make a <br/>
@@ -55,7 +60,7 @@ export default function CallToAction() {
             Join 8,430+ donors trusting us today
         </div>
 
-      </div>
+      </motion.div>
     </section>
   );
 }

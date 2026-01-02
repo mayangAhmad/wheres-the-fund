@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 interface DonorStats {
     amount: number;
+    campaign_id: string;
 }
 
 interface Props {
@@ -15,18 +16,18 @@ interface Props {
 
 export function Profile({ profile, stats }: Props) {
     const router = useRouter();
-    const totalAmounts = stats 
+    const totalAmounts = stats
     ? stats.reduce((sum, record) => sum + record.amount, 0) 
     : 0;
-    const donationCount = stats ? stats.length : 0;
+    const uniqueCampaignCount = stats ? new Set(stats.map(r => r.campaign_id)).size : 0;
 
     const statsSummary = {
         totalAmounts: totalAmounts,
-        donationsCount: donationCount,
+        donationsCount: uniqueCampaignCount,
     };
 
     const earnedBadges = calculateBadges(profile, statsSummary);
-    const impactLevel = calculateImpactLevel(donationCount);
+    const impactLevel = calculateImpactLevel(uniqueCampaignCount);
     const shortenAddress = (address: string) => {
         if (!address) return "No Wallet Connected";
         return `${address.slice(0, 12)}...${address.slice(-6)}`;
@@ -106,7 +107,7 @@ export function Profile({ profile, stats }: Props) {
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-wider">Campaigns</span>
                     </div>
-                    <span className="text-2xl font-extrabold text-gray-900">{donationCount}</span>
+                    <span className="text-2xl font-extrabold text-gray-900">{uniqueCampaignCount}</span>
                     <span className="text-[10px] text-gray-400 font-medium mt-0.5">Projects supported</span>
                 </div>
 

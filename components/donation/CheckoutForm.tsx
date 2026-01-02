@@ -1,9 +1,9 @@
 //components/donation/CheckoutForm
 import React, { useState } from "react";
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { Button } from "@/components/ui/button"; // Optional shadcn button
+import { Button } from "@/components/ui/button"; 
 
-export default function CheckoutForm({ amount }: { amount: number }) {
+export default function CheckoutForm({ amount, isAnonymous }: { amount: number, isAnonymous: boolean }) {
     const stripe = useStripe();
     const elements = useElements();
 
@@ -21,7 +21,7 @@ export default function CheckoutForm({ amount }: { amount: number }) {
             elements,
             confirmParams: {
                 // Where to go after payment succeeds
-                return_url: `${window.location.origin}/donor/success-donation`,
+                return_url: `${window.location.origin}/donor/success-donation?anonymous=${isAnonymous}`,
             },
         });
 

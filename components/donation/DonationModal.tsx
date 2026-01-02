@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import { X, ArrowLeft, AlertCircle } from "lucide-react";
+import { Check, Shield, ArrowLeft, AlertCircle } from "lucide-react";
 import CheckoutForm from "./CheckoutForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ interface DonationModalProps {
 
 export default function DonationModal({ campaignId, isOpen, onClose }: DonationModalProps) {
   const [amount, setAmount] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [clientSecret, setClientSecret] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,8 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
             amount: donationAmount,
-            campaignId: campaignId 
+            campaignId: campaignId ,
+            isAnonymous: isAnonymous
         }), 
       });
 
@@ -154,6 +156,24 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
               min="1"
               className="text-center"
             />
+            <div 
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                   isAnonymous ? "bg-blue-50 border-blue-200" : "border-gray-200"
+                }`}
+                onClick={() => setIsAnonymous(!isAnonymous)}
+             >
+                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                   isAnonymous ? "bg-blue-600 border-blue-600" : "bg-white border-gray-300"
+                }`}>
+                   {isAnonymous && <Check size={14} className="text-white" />}
+                </div>
+                <div className="text-sm">
+                   <span className="font-medium text-gray-900 flex items-center gap-1">
+                      <Shield size={14} className="text-blue-600"/> Donate Anonymously
+                   </span>
+                   <p className="text-xs text-gray-500">Hide my name from the public list.</p>
+                </div>
+             </div>
 
             <Button 
               onClick={handleProceedToPayment}
@@ -166,7 +186,7 @@ export default function DonationModal({ campaignId, isOpen, onClose }: DonationM
         ) : (
           <div className="pt-4">
             <Elements stripe={stripePromise} options={{ clientSecret }}>
-              <CheckoutForm amount={Number(amount)} />
+              <CheckoutForm amount={Number(amount)} isAnonymous={isAnonymous} />
             </Elements>
           </div>
         )}

@@ -30,7 +30,7 @@ export default async function DashboardPage() {
 
   const { data: statsData, error: statsError } = await supabase
     .from("donations")
-    .select("amount")
+    .select("campaign_id, amount")
     .eq("donor_id", user.id)
     .eq("status", "completed");
 

@@ -51,9 +51,10 @@ export async function POST(req: Request) {
     if (event.type === "payment_intent.succeeded") {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const paymentId = paymentIntent.id;
-        
-        const { campaignId, donorId } = paymentIntent.metadata;
+
+        const { campaignId, donorId, is_anonymous } = paymentIntent.metadata;
         const amountRM = paymentIntent.amount / 100;
+        const isAnonymousBool = is_anonymous === "true";
 
         if (!campaignId || !donorId) return new NextResponse("Missing Metadata", { status: 400 });
 
@@ -73,9 +74,9 @@ export async function POST(req: Request) {
                 supabaseAdmin.from("users").select("wallet_address, kms_key_id").eq("id", donorId).single(),
                 supabaseAdmin.from("milestones").select("*").eq("campaign_id", campaignId).order("milestone_index", { ascending: true }),
                 supabaseAdmin.from("campaigns")
-                  .select(`*, ngo_profiles!inner (stripe_account_id)`)
-                  .eq("id", campaignId)
-                  .single()
+                    .select(`*, ngo_profiles!inner (stripe_account_id)`)
+                    .eq("id", campaignId)
+                    .single()
             ]);
 
             if (!userProfileRes.data || !campaignRes.data) throw new Error("Required data not found");
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
 
             for (const m of milestones) {
                 const milestoneTarget = Number(m.target_amount);
-                
+
                 if (runningTotal < milestoneTarget) {
                     const roomInThisMilestone = milestoneTarget - runningTotal;
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
                             // It's escrowed if it's NOT the current index being funded (e.g., Spillover to M3)
                             isEscrow: m.milestone_index > currentCampaign.current_milestone_index
                         });
-                        
+
                         remainingToAllocate -= amountForThisMilestone;
                         runningTotal += amountForThisMilestone;
                     }
@@ -143,27 +144,28 @@ export async function POST(req: Request) {
                     milestone_index: a.index,
                     milestone_id: a.id,
                     held_in_escrow: a.isEscrow,
-                    status: a.isEscrow ? "escrowed_awaiting_proof" : "pending_blockchain_sync"
+                    status: a.isEscrow ? "escrowed_awaiting_proof" : "pending_blockchain_sync",
+                    is_anonymous: isAnonymousBool
                 });
             }
 
             // 5. UPDATE CAMPAIGN & MILESTONE STATUS
             const newTotalCollected = (currentCampaign.collected_amount || 0) + amountRM;
-            
+
             // Find the highest milestone index that is now fully funded
             const lastFundedMilestone = [...milestones]
                 .reverse()
                 .find(m => newTotalCollected >= Number(m.target_amount));
 
-            const newIndex = lastFundedMilestone 
-                ? Math.max(currentCampaign.current_milestone_index, lastFundedMilestone.milestone_index) 
+            const newIndex = lastFundedMilestone
+                ? Math.max(currentCampaign.current_milestone_index, lastFundedMilestone.milestone_index)
                 : currentCampaign.current_milestone_index;
 
             await supabaseAdmin.from("campaigns").update({
                 collected_amount: newTotalCollected,
                 total_released: (currentCampaign.total_released || 0) + directRMForCampaign,
                 escrow_balance: (currentCampaign.escrow_balance || 0) + escrowRMForCampaign,
-                current_milestone_index: newIndex, 
+                current_milestone_index: newIndex,
                 donations_count: (currentCampaign.donations_count || 0) + 1,
                 last_donation_at: new Date().toISOString()
             }).eq("id", campaignId);
@@ -173,7 +175,7 @@ export async function POST(req: Request) {
                 // If the milestone is now fully funded and was previously active
                 if (newTotalCollected >= Number(m.target_amount) && m.status === 'active') {
                     await supabaseAdmin.from("milestones").update({ status: 'pending_proof' }).eq("id", m.id);
-                    
+
                     if (currentCampaign.ngo_id) {
                         await supabaseAdmin.from("notifications").insert({
                             user_id: currentCampaign.ngo_id,
@@ -210,11 +212,11 @@ export async function POST(req: Request) {
 
                         const sig = await signer.signTypedData(EIP712_DOMAIN, TYPES, value);
                         const tx = await campaignContract.donateWithSignature(onChainId, amountWei, paymentRef, currentNonce, sig);
-                        
+
                         await supabaseAdmin.from("donations")
-                            .update({ 
-                                on_chain_tx_hash: tx.hash, 
-                                status: (alloc.index <= newIndex && !alloc.isEscrow) ? "completed" : "escrowed_awaiting_proof" 
+                            .update({
+                                on_chain_tx_hash: tx.hash,
+                                status: (alloc.index <= newIndex && !alloc.isEscrow) ? "completed" : "escrowed_awaiting_proof"
                             })
                             .match({ stripe_payment_id: paymentId, milestone_index: alloc.index });
 
@@ -224,7 +226,7 @@ export async function POST(req: Request) {
                 } catch (bcError) { console.error("🔗 Blockchain Sync Error:", bcError); }
             };
 
-            syncBlockchain(); 
+            syncBlockchain();
 
             // Notify Donor
             await supabaseAdmin.from("notifications").insert({

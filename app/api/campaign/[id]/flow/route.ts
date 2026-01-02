@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         //fetch last 8 donations
         const { data: recentDonations, error: dError } = await supabaseAdmin
             .from('donations')
-            .select(`id, donor_id, amount, created_at, milestone_index`)
+            .select(`id, donor_id, amount, created_at, milestone_index, is_anonymous, users (name)`)
             .eq('campaign_id', campaignId)
             .order('created_at', { ascending: false })
             .limit(8);
@@ -56,9 +56,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             //link donor to milestone, map the 8 donor to their mltns
             const linkedMilestone = uiMilestones.find(m => m._index === d.milestone_index)
 
+            const displayName = d.is_anonymous ? "Anonymous" : (d.users?.name || "Verified Donor");
+
             return {
                 id: d.id,
-                name: "Anonymous",
+                name: displayName,
                 amount: `RM ${d.amount}`,
                 targetMilestoneId: linkedMilestone?.id || "", //id milestone for specific donation
                 time: formatDistanceToNow(new Date(d.created_at), { addSuffix: true }).replace("about", ""),
