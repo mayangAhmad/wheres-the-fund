@@ -8,6 +8,7 @@ import { BaseUser, Notification } from "@/types/ngo";
 
 interface DonorStats {
     amount: number;
+    campaign_id: string;
 }
 
 interface DashboardContentProps {
