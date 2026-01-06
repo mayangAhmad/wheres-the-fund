@@ -9,8 +9,8 @@ interface Props {
   supabase: SupabaseClient;
   next: string | null;
   setError: (msg: string | null) => void;
-  setIsLoading: (loading: boolean) => void; // 1. Add setter
-  isLoading: boolean;                       // 2. Add boolean state for UI
+  setIsLoading: (loading: boolean) => void;
+  isLoading: boolean;
 }
 
 export default function GoogleLoginButton({ 
@@ -26,26 +26,25 @@ export default function GoogleLoginButton({
     setError(null);
 
     try {
+      const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+      if (next) {
+        callbackUrl.searchParams.set('next', next);
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // Ensure the URL is constructed correctly
-          redirectTo: `${window.location.origin}/auth/callback${
-            next ? `?next=${encodeURIComponent(next)}` : ""
-          }`,
+          redirectTo: callbackUrl.toString(),
         },
       });
-      if (error) throw error;
       
-      // 3. SUCCESS: Do NOT set isLoading(false). 
-      // Let the loader spin while the browser redirects to Google.
+      if (error) throw error;
 
     } catch (err) {
-      console.error(err);
+      console.error("Google login error:", err);
       setError("Error logging in with Google. Please try again.");
-      setIsLoading(false); // 4. ERROR: Only stop loading if it failed.
-    } 
-    // 5. REMOVED 'finally'. It would kill the loader too early on success.
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -53,7 +52,7 @@ export default function GoogleLoginButton({
       variant="outline"
       className="w-full flex justify-center items-center gap-2"
       onClick={loginWithGoogle}
-      disabled={isLoading} // Use the prop here
+      disabled={isLoading}
     >
       {isLoading ? (
         <LoaderCircle className="animate-spin size-5" />
