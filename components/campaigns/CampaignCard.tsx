@@ -1,25 +1,27 @@
-// components/campaigns/CampaignCard.tsx
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Campaign } from '@/types/ngo';
 import wsrvLoader from '@/lib/services/image-service';
 
+// 1. Updated status logic
 const getCampaignStatus = (campaign: Campaign, isFullyFunded: boolean) => {
     const now = new Date().getTime();
     const end = new Date(campaign.end_date || '').getTime();
     
-    // ⭐ NEW: Check if fully funded first
-    if (isFullyFunded) {
-        return { label: 'Fully Funded', isActive: false, color: 'text-green-600' };
-    }
-    
     const isPastDeadline = now > end;
-    const isOngoing = campaign.status === 'Ongoing';
-    const isActive = !isPastDeadline && isOngoing;
+    // Ensure we handle different status strings from your DB (e.g., 'active' or 'Ongoing')
+    const isOngoing = campaign.status?.toLowerCase() === 'ongoing' || campaign.status?.toLowerCase() === 'active';
+    
+    // ⭐ A campaign is ONLY active if: it's not past deadline, status is ongoing, AND it's not fully funded
+    const isActive = !isPastDeadline && isOngoing && !isFullyFunded;
 
     if (!isActive) {
-        return { label: 'Ended', isActive: false, color: 'text-red-600' };
+        return { 
+            label: isFullyFunded ? 'Fully Funded' : 'Ended', 
+            isActive: false, 
+            color: 'text-red-600' 
+        };
     }
     
     const diffTime = end - now;
@@ -30,15 +32,18 @@ const getCampaignStatus = (campaign: Campaign, isFullyFunded: boolean) => {
 const CampaignCard: React.FC<{ 
   campaign: Campaign; 
   priority?: boolean;
-  isFullyFunded?: boolean;
-}> = ({ campaign, priority, isFullyFunded = false }) => {
+}> = ({ campaign, priority }) => {
     const collected = Number(campaign.collected_amount) || 0;
     const goal = Number(campaign.goal_amount) || 0;
     const progress = goal > 0 ? (collected / goal) * 100 : 0;
+
+    // ⭐ FIX: Calculate isFullyFunded here so you don't rely on parent props
+    const isFullyFunded = collected >= goal;
     
     const { label, isActive, color } = getCampaignStatus(campaign, isFullyFunded);
 
-    const isEnded = campaign.status === 'Completed' || campaign.status === 'Closed' || isFullyFunded;
+    // Visual check for "Completed" status from DB
+    const isClosedInDB = campaign.status === 'Completed' || campaign.status === 'Closed';
 
     return (
         <Link
@@ -56,12 +61,10 @@ const CampaignCard: React.FC<{
                     priority={priority}
                 />
                 
-                {/* ⭐ UPDATED: Show appropriate status badge */}
+                {/* ⭐ This badge will now correctly switch to CLOSED when progress >= 100% */}
                 <span className={`absolute top-2 right-2 text-[10px] px-2 py-1 rounded font-bold z-10 
-                    ${isActive ? 'bg-green-600 text-white' : 
-                      isFullyFunded ? 'bg-blue-600 text-white' : 
-                      'bg-gray-800 text-gray-200'}`}>
-                    {isActive ? 'ACTIVE' : isFullyFunded ? 'FUNDED' : 'CLOSED'}
+                    ${isActive ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-200'}`}>
+                    {isActive ? 'ACTIVE' : 'CLOSED'}
                 </span>
             </div>
 
@@ -73,38 +76,34 @@ const CampaignCard: React.FC<{
 
                 <div className="mt-auto pt-2">
                     <div className="flex justify-between text-xs mb-1 font-semibold">
-                        <span className={isFullyFunded ? "text-green-600" : "text-orange-600"}>
-                            {progress.toFixed(0)}% Funded
-                        </span>
+                        <span className="text-orange-600">{progress.toFixed(0)}% Funded</span>
                         <span className="text-gray-500">RM {collected.toLocaleString()} / RM {goal.toLocaleString()}</span>
                     </div>
                     
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                         <div
-                        className={`h-2 rounded-full transition-all duration-700 ease-out ${
-                            isEnded ? (isFullyFunded ? 'bg-green-600' : 'bg-gray-700') : 'bg-orange-500'
-                        }`}
-                        style={{ width: `${Math.min(progress, 100)}%` }}
+                            className={`h-2 rounded-full transition-all duration-700 ease-out ${
+                                !isActive ? 'bg-gray-400' : 'bg-orange-500'
+                            }`}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
                         />
                     </div>
                     
-                    {/* ⭐ UPDATED: Show appropriate status text */}
                     <div className="flex justify-end text-xs mt-2 font-medium">
+                        {/* ⭐ This will now show "Fully Funded" instead of days left */}
                         <span className={color}>{label}</span>
                     </div>
                 </div>
 
-                {/* ⭐ UPDATED: Show appropriate button text */}
+                {/* ⭐ Button correctly greys out and changes text */}
                 <span
                     className={`mt-4 w-full text-center text-sm font-bold py-2 rounded transition-all
                         ${isActive 
                             ? 'bg-orange-600 group-hover:bg-orange-700 text-white' 
-                            : isFullyFunded
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-200 text-gray-500'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         }`}
                 >
-                    {isActive ? 'Donate Now' : isFullyFunded ? 'Fully Funded' : 'Campaign Ended'}
+                    {isActive ? 'Donate Now' : isFullyFunded ? 'Goal Reached' : 'Campaign Ended'}
                 </span>
             </div>
         </Link>
