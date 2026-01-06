@@ -7,6 +7,7 @@ export interface DonorUser {
   name: string;
   role: string;
   wallet_address: string | null;
+  profile_image_url?: string;
   stripe_customer_id: string | null;
 }
 
@@ -24,7 +25,8 @@ export async function mapToDonorUser(authenticatedUser: User): Promise<DonorUser
       role,
       wallet_address,
       donor_profiles (
-        stripe_customer_id
+        stripe_customer_id,
+        profile_image_url
       )
     `)
     .eq("id", authenticatedUser.id)
@@ -54,6 +56,7 @@ export async function mapToDonorUser(authenticatedUser: User): Promise<DonorUser
     name: data.name,
     role: data.role,
     wallet_address: data.wallet_address,
+    profile_image_url: donorProfile.profile_image_url,
     stripe_customer_id: donorProfile?.stripe_customer_id || null,
   };
 }
