@@ -175,13 +175,15 @@ export async function POST(req: Request) {
 
             // 5. UPDATE CAMPAIGN
             const newTotalCollected = currentCollected + amountRM;
+            const isFullyFunded = newTotalCollected >= totalGoal;
 
             await supabaseAdmin.from("campaigns").update({
                 collected_amount: newTotalCollected,
                 total_released: (currentCampaign.total_released || 0) + directRMForCampaign,
                 escrow_balance: (currentCampaign.escrow_balance || 0) + escrowRMForCampaign,
                 donations_count: (currentCampaign.donations_count || 0) + 1,
-                last_donation_at: new Date().toISOString()
+                last_donation_at: new Date().toISOString(),
+                status: isFullyFunded ? 'Completed' : currentCampaign.status
             }).eq("id", campaignId);
 
             // ⭐ FIX #2: Check ALL milestones (not just active ones)
