@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useNgoUser } from "@/context/NgoUserContext";
-import { useNotifications } from "@/hooks/useNotifications"; // 💡 Import the hook
+import { useNotifications } from "@/hooks/useNotifications";
 import { Home, Heart, Bell, Settings, PlusCircle, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,7 +25,6 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
   const router = useRouter();
   const { user } = useNgoUser();
   
-  // ✅ Initialize Real-time Notifications
   const { unreadCount } = useNotifications(user?.id);
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -92,7 +91,6 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
         {/* Links */}
         {sidebarLinks.map((link) => {
           const isActive = pathname === link.href; 
-          const isNotification = link.name === "Notifications";
           
           return (
             <Link
@@ -109,14 +107,6 @@ export default function NgoSidebar({ isCollapsed, toggleSidebar }: SidebarProps)
               <link.icon size={20} />
               {!isCollapsed && <span className="ml-3 animate-in fade-in duration-200">{link.name}</span>}
 
-              {/* 🔴 REAL-TIME NOTIFICATION BADGE */}
-              {isNotification && unreadCount > 0 && (
-                <span className={`absolute flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#182F44] animate-bounce
-                  ${isCollapsed ? "top-2 right-4 h-4 w-4" : "right-4 h-5 w-5"}
-                `}>
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </Link>
           );
         })}
