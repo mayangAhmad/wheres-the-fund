@@ -97,7 +97,7 @@ export async function POST(req: Request) {
             // ⭐ FIX #1: Calculate TOTAL goal (sum of all milestones)
             const totalGoal = milestones.reduce((sum, m) => sum + Number(m.target_amount), 0);
             const currentCollected = Number(currentCampaign.collected_amount || 0);
-            
+
             if (currentCollected >= totalGoal) {
                 return new NextResponse("Campaign fully funded - donations closed", { status: 400 });
             }
@@ -107,11 +107,14 @@ export async function POST(req: Request) {
             let remainingToAllocate = amountRM;
             let runningTotal = currentCollected;
 
-            for (const m of milestones) {
-                const milestoneTarget = Number(m.target_amount);
+            let cumulativeTarget = 0;
 
-                if (runningTotal < milestoneTarget) {
-                    const roomInThisMilestone = milestoneTarget - runningTotal;
+            for (const m of milestones) {
+                const singleTarget = Number(m.target_amount);
+                cumulativeTarget += singleTarget;
+
+                if (runningTotal < cumulativeTarget) {
+                    const roomInThisMilestone = cumulativeTarget - runningTotal;
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
                     if (amountForThisMilestone > 0) {
@@ -131,6 +134,10 @@ export async function POST(req: Request) {
                 }
                 if (remainingToAllocate <= 0) break;
             }
+            if (allocations.length === 0) {
+                console.error("⚠️ Error: No allocations generated. Inputs:", { amountRM, currentCollected, cumulativeTarget });
+                // If you want to force save anyway (to avoid money loss), put code here.
+            }
 
             // 4. EXECUTE TRANSFERS & DB INSERTS
             let directRMForCampaign = 0;
@@ -146,13 +153,13 @@ export async function POST(req: Request) {
                                 currency: 'myr',
                                 destination: ngoStripeId,
                                 description: `Direct: ${currentCampaign.title} - M${a.index + 1}`,
-                                metadata: { 
+                                metadata: {
                                     paymentIntentId: paymentId,
                                     campaignId: campaignId,
                                     milestoneIndex: a.index.toString()
                                 }
                             });
-                        } catch (err) { 
+                        } catch (err) {
                             console.error("❌ Stripe Transfer Failed:", err);
                         }
                     }
@@ -188,18 +195,18 @@ export async function POST(req: Request) {
             // We need to check BOTH:
             // 1. Milestones that are currently active and just reached target
             // 2. Milestones that are locked but have accumulated enough funds (spillover)
-            
+
             for (const m of milestones) {
                 // Calculate cumulative amount collected up to this milestone
                 let cumulativeTarget = 0;
                 for (let i = 0; i <= m.milestone_index; i++) {
                     cumulativeTarget += Number(milestones[i].target_amount);
                 }
-                
+
                 const milestoneReached = newTotalCollected >= cumulativeTarget;
                 const wasActive = m.status === 'active';
                 const wasNotNotifiedYet = m.status !== 'pending_proof' && m.status !== 'pending_review' && m.status !== 'approved';
-                
+
                 // ⭐ Trigger notification if:
                 // - Milestone just reached its cumulative target
                 // - AND milestone is currently active (not locked/approved)
@@ -208,7 +215,7 @@ export async function POST(req: Request) {
                     const deadlineDate = new Date();
                     deadlineDate.setDate(deadlineDate.getDate() + 5);
 
-                    await supabaseAdmin.from("milestones").update({ 
+                    await supabaseAdmin.from("milestones").update({
                         status: 'pending_proof',
                         proof_deadline: deadlineDate.toISOString()
                     }).eq("id", m.id);
@@ -267,7 +274,7 @@ export async function POST(req: Request) {
                     if (directRMForCampaign > 0 || escrowRMForCampaign > 0) {
                         const directWei = parseUnits(directRMForCampaign.toFixed(2), 18);
                         const escrowWei = parseUnits(escrowRMForCampaign.toFixed(2), 18);
-                        
+
                         const updateTx = await adminContract.updateCampaignBalances(
                             onChainId,
                             directWei,
@@ -277,7 +284,7 @@ export async function POST(req: Request) {
                         console.log("✅ Smart contract balances updated:", updateTx.hash);
                     }
 
-                } catch (bcError) { 
+                } catch (bcError) {
                     console.error("🔗 Blockchain Sync Error:", bcError);
                 }
             };
