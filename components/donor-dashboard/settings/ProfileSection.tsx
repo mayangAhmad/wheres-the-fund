@@ -47,12 +47,12 @@ export default function ProfileSection({ profile }: ProfileSectionProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-50 border-b border-gray-200 p-4 px-6 flex items-center justify-between">
+      <div className="bg-gray-50 border-b border-gray-200 p-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-white border border-orange-100 rounded-lg text-orange-600 shadow-sm">
             <User className="w-4 h-4" />
           </div>
-          <h3 className="font-semibold text-gray-900">Personal Details</h3>
+          <h3 className="font-semibold text-gray-900 text-sm md:text-base">Personal Details</h3>
         </div>
         {!isEditing && (
           <button 
@@ -65,7 +65,7 @@ export default function ProfileSection({ profile }: ProfileSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {isEditing ? (
           <div className="animate-in fade-in slide-in-from-top-1 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -91,17 +91,17 @@ export default function ProfileSection({ profile }: ProfileSectionProps) {
             </div>
 
             {/* ✅ UPDATED: Buttons moved here to match Password section */}
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-100">
                <button 
                  onClick={() => setIsEditing(false)} 
-                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                 className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 rounded-lg trannsition-colors"
                >
                  Cancel
                </button>
                <button 
                  onClick={handleSave} 
                  disabled={isLoading} 
-                 className="px-4 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                 className="w-full sm:w-auto px-4 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex justify-center"
                >
                  {isLoading ? "Saving..." : "Save Changes"}
                </button>
@@ -109,12 +109,12 @@ export default function ProfileSection({ profile }: ProfileSectionProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase text-gray-400 mb-1">Display Name</p>
               <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
             </div>
             
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase text-gray-400 mb-1">Email Address</p>
               <p className="text-sm font-semibold text-gray-900 truncate">{profile.email}</p>
             </div>

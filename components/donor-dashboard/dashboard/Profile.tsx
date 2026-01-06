@@ -34,11 +34,11 @@ export function Profile({ profile, stats }: Props) {
     };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 md:p-10 shadow-sm h-full flex flex-col justify-between gap-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 md:p-10 shadow-sm h-full flex flex-col justify-between gap-6 w-full overflow-hidden">
             
             {/* 1. TOP SECTION: Identity */}
         <div className="flex flex-col xl:flex-row items-center xl:items-start justify-between gap-6">
-            <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left ">
+            <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left min-w-0 ">
                 {/* Avatar */}
                 <div className="relative shrink-0">
                     <div className="w-30 h-30 rounded-full bg-orange-100 flex items-center justify-center border-4 border-white shadow-sm">
@@ -47,12 +47,15 @@ export function Profile({ profile, stats }: Props) {
                     <div className="absolute bottom-1.5 right-1.5 bg-green-500 border-4 border-white w-6 h-6 rounded-full" />
                 </div>
 
-                <div className="space-y-1">
-                    <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
+                <div className="space-y-1 min-w-0 w-full">
+                    <h2 className="text-2xl font-bold text-gray-900 truncate">{profile.name}</h2>
                     
                     <div className="flex flex-col gap-2 text-sm text-gray-500">
                         <div className="flex flex-col md:flex-row flex-wrap justify-start gap-2">
-                            <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {profile.email}</span>
+                            <div className="flex items-center justify-center md:justify-start gap-1.5 min-w-0">
+                            <Mail className="w-3.5 h-3.5 shrink-0" /> 
+                            <span className="truncate">{profile.email}</span>
+                        </div>
                             {profile.phoneNum && <span className="flex items-center gap-1.5 border-gray-300 md:border-l md:pl-3"><Phone className="w-3.5 h-3.5" /> {profile.phoneNum}</span>}
                         </div>
                         
@@ -88,7 +91,7 @@ export function Profile({ profile, stats }: Props) {
         </div>
 
             {/* 2. MIDDLE SECTION: Stats */}
-            <div className="bg-gray-50/80 rounded-xl p-5 border border-gray-100 grid grid-col-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-50/80 rounded-xl p-5 border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col items-center justify-center border-r border-gray-200">
                     <div className="flex items-center gap-1.5 text-gray-500 mb-1">
                         <div className="p-1 bg-green-100 rounded-full text-green-600">

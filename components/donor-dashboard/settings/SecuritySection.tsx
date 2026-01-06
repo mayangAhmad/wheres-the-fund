@@ -64,18 +64,18 @@ export default function SecuritySection({ profile }: SecuritySectionProps) {
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         
         {/* Header */}
-        <div className="bg-gray-50 border-b border-gray-200 p-4 px-6 flex items-center justify-between">
+        <div className="bg-gray-50 border-b border-gray-200 p-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
            <div className="flex items-center gap-3">
               <div className="p-2 bg-white border border-blue-200 rounded-lg text-blue-700 shadow-sm">
                 <Lock className="w-4 h-4" />
               </div>
-              <h3 className="font-semibold text-gray-900">Password & Security</h3>
+              <h3 className="font-semibold text-gray-900 text-sm md:text-base">Password & Security</h3>
            </div>
            
            {!isChanging && (
              <button 
                onClick={() => setIsChanging(true)}
-               className="text-xs font-medium text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-all shadow-sm"
+               className="w-full sm:w-auto justify-center text-xs font-medium text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap"
              >
                Change Password
              </button>
@@ -83,10 +83,10 @@ export default function SecuritySection({ profile }: SecuritySectionProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 transition-all duration-300">
+        <div className="p-4 md:p-6 transition-all duration-300">
           {!isChanging ? (
-             <div className="flex items-center justify-between">
-                <div>
+             <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
                    <p className="text-sm font-medium text-gray-900">Password</p>
                    <p className="text-xs text-gray-500">Secure your account with a strong password.</p>
                 </div>
@@ -99,7 +99,7 @@ export default function SecuritySection({ profile }: SecuritySectionProps) {
                   <p className="text-sm text-gray-500">Please enter your current password to verify your identity.</p>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4 md:space-y-6">
                   {/* Current Password - Full Width */}
                   <div>
                      <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Current Password</label>
@@ -136,17 +136,17 @@ export default function SecuritySection({ profile }: SecuritySectionProps) {
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-8 justify-end border-t border-gray-100 pt-6">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 mt-8 justify-end border-t border-gray-100 pt-6">
                   <button 
                     onClick={() => setIsChanging(false)} 
-                    className="px-6 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleUpdate} 
                     disabled={isLoading || !newPassword || !currentPassword} 
-                    className="px-6 py-2.5 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 shadow-sm"
+                    className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 shadow-sm flex justify-center"
                   >
                     {isLoading ? "Updating..." : "Update Password"}
                   </button>

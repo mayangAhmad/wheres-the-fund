@@ -17,13 +17,14 @@ export default function CampaignListClient({ initialCampaigns }: { initialCampai
   
   return (
     <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+      <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="bg-gray-50 border-b">
           <tr>
-            <th className="px-6 py-4 font-semibold text-gray-700">Campaign Title</th>
-            <th className="px-6 py-4 font-semibold text-gray-700">Status</th>
-            <th className="px-6 py-4 font-semibold text-gray-700">Progress</th>
-            <th className="px-6 py-4 font-semibold text-gray-700 text-right">Action</th>
+            <th className="px-6 py-4 font-semibold text-gray-700 whitespace-nowrap">Campaign Title</th>
+            <th className="px-6 py-4 font-semibold text-gray-700 whitespace-nowrap">Status</th>
+            <th className="px-6 py-4 font-semibold text-gray-700 whitespace-nowrap">Progress</th>
+            <th className="px-6 py-4 font-semibold text-gray-700 text-right whitespace-nowrap">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -51,6 +52,7 @@ export default function CampaignListClient({ initialCampaigns }: { initialCampai
           ))}
         </tbody>
       </table>
+      </div>
       
       {initialCampaigns.length === 0 && (
         <div className="p-12 text-center text-gray-500">

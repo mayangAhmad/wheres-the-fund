@@ -20,15 +20,15 @@ export default async function NgoCampaignsPage() {
 
   // 3. RENDER CLIENT COMPONENT
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Campaigns</h1>
-          <p className="text-gray-500">Manage your fundraising efforts and milestones.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Campaigns</h1>
+          <p className="text-sm md:text-base mt-1 text-gray-500">Manage your fundraising efforts and milestones.</p>
         </div>
         <a 
           href="/ngo/campaigns/create" 
-          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors w-full md:w-auto shadow-sm"
         >
           + Create New
         </a>

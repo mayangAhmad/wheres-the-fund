@@ -74,28 +74,28 @@ export default function NotificationClient({
     <div className={`flex flex-col gap-6 h-full ${mode === "widget" ? "bg-white border border-gray-200 rounded-xl p-6 shadow-sm" : "space-y-6"}`}>
       
       {/* Action Bar */}
-      <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg border border-gray-100">
+      <div className="flex flex-row justify-between items-center bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-100 gap-3">
         {mode === "widget" ? (
-           <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
+           <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">Notifications</h3>
         ) : (
            // Full Page Header
-           <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-3 py-1 rounded-md">
-             <Bell className="w-4 h-4" />
-             <span className="text-sm font-medium">You have {unreadCount} unread messages</span>
+           <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-3 py-1 rounded-md overflow-hidden">
+             <Bell className="w-4 h-4 shrink-0" />
+             <span className="text-sm font-medium truncate">You have {unreadCount} unread messages</span>
            </div>
         )}
 
         {mode === "full" && unreadCount > 0 && (
           <button 
             onClick={handleMarkAllRead}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
           >
             <CheckCheck className="w-4 h-4" /> Mark all as read
           </button>
         )}
         
         {mode === "widget" && (
-           <Link href="/donor/notifications" className="text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center">
+           <Link href="/donor/notifications" className="text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center whitespace-nowrap shrink-0">
              View All <ArrowRight className="w-3 h-3 ml-1" />
            </Link>
         )}
