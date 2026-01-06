@@ -20,12 +20,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { milestoneId, campaignId, decision } = await req.json();
+    const { milestoneId, campaignId, decision, rejectionReason } = await req.json();
 
-    // 2. Fetch Campaign (including summary columns) and Milestone
+    // 2. Fetch Data
     const { data: campaign } = await supabaseAdmin
         .from("campaigns")
-        .select("*, ngo_profiles(stripe_account_id)")
+        .select("*, ngo_profiles(stripe_account_id, account_status)")
         .eq("id", campaignId)
         .single();
 
@@ -35,15 +35,27 @@ export async function POST(req: Request) {
         .eq("id", milestoneId)
         .single();
 
-    if (!campaign || !milestone) throw new Error("Data missing");
+    const { data: allMilestones } = await supabaseAdmin
+        .from("milestones")
+        .select("*")
+        .eq("campaign_id", campaignId)
+        .order("milestone_index", { ascending: true });
+
+    if (!campaign || !milestone || !allMilestones) throw new Error("Data missing");
 
     // --- PATH A: REJECTION ---
     if (decision === 'reject') {
-        await supabaseAdmin.from("milestones").update({ status: "rejected" }).eq("id", milestoneId);
+        // Reset milestone to pending_proof (NGO gets another chance)
+        await supabaseAdmin.from("milestones").update({ 
+            status: "pending_proof",
+            auditor_remarks: rejectionReason || "Proof rejected - please resubmit"
+        }).eq("id", milestoneId);
+
         if (campaign.ngo_id) {
             await supabaseAdmin.from("notifications").insert({
                 user_id: campaign.ngo_id,
-                message: `❌ ACTION REQUIRED: Proof for "${milestone.title}" was rejected.`,
+                message: `❌ Proof for "${milestone.title}" rejected. ${rejectionReason || 'Please review and resubmit.'}`,
+                is_read: false
             });
         }
         return NextResponse.json({ success: true, status: "rejected" });
@@ -51,94 +63,122 @@ export async function POST(req: Request) {
 
     // --- PATH B: APPROVAL & RELEASE ---
     
-const { data: escrowedDonations } = await supabaseAdmin
-    .from("donations")
-    .select("amount")
-    .eq("campaign_id", campaignId)
-    .lte("milestone_index", milestone.milestone_index + 1) // Catch current index AND the overflow
-    .eq("held_in_escrow", true);
+    // ⭐ FIX: Only release escrow for THIS milestone
+    const { data: escrowedDonations } = await supabaseAdmin
+        .from("donations")
+        .select("amount")
+        .eq("campaign_id", campaignId)
+        .eq("milestone_index", milestone.milestone_index) // ✅ ONLY THIS MILESTONE
+        .eq("held_in_escrow", true);
 
     const amountToRelease = escrowedDonations?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
     const proofCID = milestone.ipfs_cid || "No CID";
 
+    // 4. Stripe Transfer
+    if (amountToRelease > 0 && campaign.ngo_profiles?.stripe_account_id) {
+        try {
+            await stripe.transfers.create({
+                amount: Math.round(amountToRelease * 100),
+                currency: "myr",
+                destination: campaign.ngo_profiles.stripe_account_id,
+                description: `Escrow Release: M${milestone.milestone_index + 1} - ${milestone.title}`,
+                metadata: {
+                    campaignId: campaignId,
+                    milestoneId: milestoneId,
+                    proofCID: proofCID
+                }
+            });
+        } catch (stripeError) {
+            console.error("❌ Stripe transfer failed:", stripeError);
+            throw new Error("Failed to transfer funds to NGO");
+        }
 
-// 4. Physical Stripe Transfer
-if (amountToRelease > 0 && campaign.ngo_profiles?.stripe_account_id) {
-    await stripe.transfers.create({
-        amount: Math.round(amountToRelease * 100),
-        currency: "myr",
-        destination: campaign.ngo_profiles.stripe_account_id,
-        description: `Escrow Release: ${milestone.title} (Proof: ${proofCID})`,
-    });
+        // Update donation records
+        await supabaseAdmin
+            .from("donations")
+            .update({ 
+                held_in_escrow: false, 
+                status: 'completed' 
+            })
+            .eq("campaign_id", campaignId)
+            .eq("milestone_index", milestone.milestone_index)
+            .eq("held_in_escrow", true);
+    }
 
-    // ✅ UPDATE: This specifically targets the RM 600 at Index 1
-    // even though we are currently "approving" Milestone 1.
-    await supabaseAdmin
-        .from("donations")
-        .update({ 
-            held_in_escrow: false, 
-            status: 'completed' 
-        })
-        .eq("campaign_id", campaignId)
-        .lte("milestone_index", milestone.milestone_index + 1)
-        .eq("held_in_escrow", true); // Only update rows that were actually locked
-}
-
-    // 5. Update Campaign Summary Columns
-    // 💡 Logic: Subtract released amount from escrow and add to total_released
+    // 5. Update Campaign Balances
     const currentEscrow = Number(campaign.escrow_balance || 0);
     const currentReleased = Number(campaign.total_released || 0);
-    const nextMilestoneIndex = milestone.milestone_index + 1;
 
     await supabaseAdmin
         .from("campaigns")
         .update({
-            total_released: currentReleased + amountToRelease, // 📈 Increase released
-            escrow_balance: Math.max(0, currentEscrow - amountToRelease), // 📉 Decrease escrow
-            current_milestone_index: nextMilestoneIndex // Sync with contract
+            total_released: currentReleased + amountToRelease,
+            escrow_balance: Math.max(0, currentEscrow - amountToRelease)
         })
         .eq("id", campaignId);
 
     // 6. Blockchain Sync
     let onChainTxHash = null;
     if (campaign.on_chain_id) {
-        const signer = createKmsSigner(ADMIN_KMS_ID);
-        const contract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
-        // Increments currentMilestone in contract and records CID
-        const tx = await contract.approveMilestone(campaign.on_chain_id, proofCID);
-        await tx.wait();
-        onChainTxHash = tx.hash;
+        try {
+            const signer = createKmsSigner(ADMIN_KMS_ID);
+            const contract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
+            const tx = await contract.approveMilestone(campaign.on_chain_id, proofCID);
+            await tx.wait();
+            onChainTxHash = tx.hash;
+        } catch (bcError) {
+            console.error("🔗 Blockchain approval error:", bcError);
+            // Don't throw - continue with database updates
+        }
     }
 
-    // 7. Milestone State Updates
+    // 7. Update Milestone Statuses
     await supabaseAdmin.from("milestones").update({ 
         status: "approved", 
         approved_at: new Date().toISOString(),
-        payout_tx_hash: onChainTxHash
+        payout_tx_hash: onChainTxHash,
+        auditor_remarks: "Approved"
     }).eq("id", milestoneId);
 
-    // Unlock next milestone if it exists
-    await supabaseAdmin.from("milestones")
-        .update({ status: 'active' })
-        .eq("campaign_id", campaignId)
-        .eq("milestone_index", nextMilestoneIndex);
+    // ⭐ Activate next milestone if it exists
+    const nextMilestoneIndex = milestone.milestone_index + 1;
+    const nextMilestone = allMilestones.find(m => m.milestone_index === nextMilestoneIndex);
+    
+    if (nextMilestone) {
+        await supabaseAdmin.from("milestones")
+            .update({ status: 'active' })
+            .eq("id", nextMilestone.id);
+    }
 
-    // 8. NGO Notification
+    // 8. Create payout record
+    if (amountToRelease > 0) {
+        await supabaseAdmin.from("payouts").insert({
+            campaign_id: campaignId,
+            milestone_id: milestoneId,
+            amount: amountToRelease,
+            blockchain_approval_tx_hash: onChainTxHash || 'pending',
+            stripe_transfer_id: 'completed', // Update with actual transfer ID if needed
+            processed_at: new Date().toISOString()
+        });
+    }
+
+    // 9. NGO Notification
     if (campaign.ngo_id) {
         await supabaseAdmin.from("notifications").insert({
             user_id: campaign.ngo_id, 
-            message: `✅ APPROVED: RM ${amountToRelease} released for "${milestone.title}". Milestone ${nextMilestoneIndex + 1} is now active.`,
+            message: `✅ Milestone ${milestone.milestone_index + 1} "${milestone.title}" APPROVED! RM ${amountToRelease.toFixed(2)} released to your account.${nextMilestone ? ` Milestone ${nextMilestoneIndex + 1} is now active.` : ''}`,
+            is_read: false
         });
     }
 
     return NextResponse.json({ 
         success: true, 
-        amountReleased: amountToRelease, 
-        nextIndex: nextMilestoneIndex 
+        amountReleased: amountToRelease,
+        nextMilestoneActivated: !!nextMilestone
     });
 
   } catch (error: any) {
-    console.error("Review Error:", error);
+    console.error("❌ Review Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
