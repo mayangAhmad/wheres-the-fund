@@ -13,7 +13,13 @@ export default async function DashboardPage() {
 
   const { data: userProfile, error: profileError } = await supabase
     .from("users")
-    .select("*")
+    .select(`
+      *,
+      donor_profiles (
+        stripe_customer_id,
+        profile_image_url
+      )
+    `)
     .eq("id", user.id)
     .single();
 
@@ -26,7 +32,7 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-    if (notifError) console.error("Error fetching notifications:", notifError);
+  if (notifError) console.error("Error fetching notifications:", notifError);
 
   const { data: statsData, error: statsError } = await supabase
     .from("donations")
@@ -36,10 +42,16 @@ export default async function DashboardPage() {
 
   if (statsError) console.error("Error fetching donor stats:", statsError);
 
+  const donorProfile = Array.isArray(userProfile?.donor_profiles) 
+    ? userProfile.donor_profiles[0] 
+    : userProfile?.donor_profiles;
+
   const profileData = {
     ...userProfile,
-    phoneNum: user.phone || ""
-  }
+    phoneNum: user.phone || "",
+    profile_image_url: donorProfile?.profile_image_url || null,
+    stripe_customer_id: donorProfile?.stripe_customer_id || null,
+  };
 
   return <HomeDashboard profile={profileData} stats={statsData} notifications={notificationsData || []}/>;
 }
