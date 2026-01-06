@@ -34,6 +34,7 @@ interface Allocation {
     amount: number;
     id?: string;
     isEscrow: boolean;
+    milestoneStatus: string;
 }
 
 export async function POST(req: Request) {
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
                 .select("status")
                 .eq("stripe_payment_id", paymentId);
 
-            if (existing?.some(d => d.status === 'completed')) {
+            if (existing?.some(d => d.status === 'completed' || d.status === 'escrowed_awaiting_proof')) {
                 return new NextResponse("Already Processed", { status: 200 });
             }
 
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
                 supabaseAdmin.from("users").select("wallet_address, kms_key_id").eq("id", donorId).single(),
                 supabaseAdmin.from("milestones").select("*").eq("campaign_id", campaignId).order("milestone_index", { ascending: true }),
                 supabaseAdmin.from("campaigns")
-                    .select(`*, ngo_profiles!inner (stripe_account_id)`)
+                    .select(`*, ngo_profiles!inner (stripe_account_id, account_status)`)
                     .eq("id", campaignId)
                     .single()
             ]);
@@ -85,11 +86,26 @@ export async function POST(req: Request) {
             const userProfile = userProfileRes.data;
             const currentCampaign = campaignRes.data;
             const ngoStripeId = (currentCampaign.ngo_profiles as any)?.stripe_account_id;
+            const ngoAccountStatus = (currentCampaign.ngo_profiles as any)?.account_status;
 
-            // 3. 💡 DYNAMIC ALLOCATION & SPILLOVER LOGIC (M1 -> M2 -> M3)
+            // ⭐ CHECK: Is NGO account blocked?
+            if (ngoAccountStatus === 'blocked') {
+                return new NextResponse("Campaign NGO is blocked - donations disabled", { status: 403 });
+            }
+
+            // ⭐ CHECK: Is final milestone (M3) fully funded?
+            const finalMilestone = milestones[milestones.length - 1];
+            const totalGoal = Number(finalMilestone?.target_amount || 0);
+            const currentCollected = Number(currentCampaign.collected_amount || 0);
+            
+            if (currentCollected >= totalGoal) {
+                return new NextResponse("Campaign fully funded - donations closed", { status: 400 });
+            }
+
+            // 3. 💡 CORRECTED ALLOCATION LOGIC
             const allocations: Allocation[] = [];
             let remainingToAllocate = amountRM;
-            let runningTotal = Number(currentCampaign.collected_amount || 0);
+            let runningTotal = currentCollected;
 
             for (const m of milestones) {
                 const milestoneTarget = Number(m.target_amount);
@@ -99,12 +115,18 @@ export async function POST(req: Request) {
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
                     if (amountForThisMilestone > 0) {
+                        // ⭐ KEY FIX: Escrow logic based on milestone status
+                        // - 'active': Currently collecting, goes DIRECT to NGO
+                        // - 'approved': Already unlocked, goes DIRECT to NGO  
+                        // - 'locked', 'pending_proof', 'pending_review': Goes to ESCROW
+                        const isDirect = (m.status === 'active' || m.status === 'approved');
+
                         allocations.push({
                             index: m.milestone_index,
                             amount: amountForThisMilestone,
                             id: m.id,
-                            // It's escrowed if it's NOT the current index being funded (e.g., Spillover to M3)
-                            isEscrow: m.milestone_index > currentCampaign.current_milestone_index
+                            isEscrow: !isDirect,
+                            milestoneStatus: m.status
                         });
 
                         remainingToAllocate -= amountForThisMilestone;
@@ -120,6 +142,7 @@ export async function POST(req: Request) {
 
             for (const a of allocations) {
                 if (!a.isEscrow) {
+                    // ⭐ Direct transfer to NGO
                     directRMForCampaign += a.amount;
                     if (ngoStripeId) {
                         try {
@@ -127,12 +150,20 @@ export async function POST(req: Request) {
                                 amount: Math.round(a.amount * 100),
                                 currency: 'myr',
                                 destination: ngoStripeId,
-                                description: `Release for ${currentCampaign.title} - M${a.index + 1}`,
-                                metadata: { paymentIntentId: paymentId }
+                                description: `Direct: ${currentCampaign.title} - M${a.index + 1}`,
+                                metadata: { 
+                                    paymentIntentId: paymentId,
+                                    campaignId: campaignId,
+                                    milestoneIndex: a.index.toString()
+                                }
                             });
-                        } catch (err) { console.error("❌ Stripe Transfer Failed:", err); }
+                        } catch (err) { 
+                            console.error("❌ Stripe Transfer Failed:", err);
+                            // Don't throw - log and continue
+                        }
                     }
                 } else {
+                    // ⭐ Hold in escrow
                     escrowRMForCampaign += a.amount;
                 }
 
@@ -149,37 +180,36 @@ export async function POST(req: Request) {
                 });
             }
 
-            // 5. UPDATE CAMPAIGN & MILESTONE STATUS
-            const newTotalCollected = (currentCampaign.collected_amount || 0) + amountRM;
-
-            // Find the highest milestone index that is now fully funded
-            const lastFundedMilestone = [...milestones]
-                .reverse()
-                .find(m => newTotalCollected >= Number(m.target_amount));
-
-            const newIndex = lastFundedMilestone
-                ? Math.max(currentCampaign.current_milestone_index, lastFundedMilestone.milestone_index)
-                : currentCampaign.current_milestone_index;
+            // 5. UPDATE CAMPAIGN
+            const newTotalCollected = currentCollected + amountRM;
 
             await supabaseAdmin.from("campaigns").update({
                 collected_amount: newTotalCollected,
                 total_released: (currentCampaign.total_released || 0) + directRMForCampaign,
                 escrow_balance: (currentCampaign.escrow_balance || 0) + escrowRMForCampaign,
-                current_milestone_index: newIndex,
                 donations_count: (currentCampaign.donations_count || 0) + 1,
                 last_donation_at: new Date().toISOString()
             }).eq("id", campaignId);
 
-            // Update milestones and Notify NGO
+            // 6. ⭐ CHECK IF ANY MILESTONE JUST REACHED TARGET
             for (const m of milestones) {
-                // If the milestone is now fully funded and was previously active
-                if (newTotalCollected >= Number(m.target_amount) && m.status === 'active') {
-                    await supabaseAdmin.from("milestones").update({ status: 'pending_proof' }).eq("id", m.id);
+                const milestoneReached = newTotalCollected >= Number(m.target_amount);
+                const previouslyActive = m.status === 'active';
+                
+                if (milestoneReached && previouslyActive) {
+                    // Set 5-day deadline
+                    const deadlineDate = new Date();
+                    deadlineDate.setDate(deadlineDate.getDate() + 5);
+
+                    await supabaseAdmin.from("milestones").update({ 
+                        status: 'pending_proof',
+                        proof_deadline: deadlineDate.toISOString()
+                    }).eq("id", m.id);
 
                     if (currentCampaign.ngo_id) {
                         await supabaseAdmin.from("notifications").insert({
                             user_id: currentCampaign.ngo_id,
-                            message: `🎯 GOAL REACHED: Phase ${m.milestone_index + 1} ("${m.title}") is fully funded! Upload proof now to release escrow.`,
+                            message: `🎯 Milestone ${m.milestone_index + 1} "${m.title}" fully funded! Upload proof within 5 days or account will be blocked.`,
                             is_read: false,
                             created_at: new Date().toISOString()
                         });
@@ -187,17 +217,17 @@ export async function POST(req: Request) {
                 }
             }
 
-            // Standard Donation Receipt Notification for NGO
+            // Notify NGO of new donation
             if (currentCampaign.ngo_id) {
                 await supabaseAdmin.from("notifications").insert({
                     user_id: currentCampaign.ngo_id,
-                    message: `🎉 New Donation: RM ${amountRM} received for "${currentCampaign.title}".`,
+                    message: `🎉 New Donation: RM ${amountRM} for "${currentCampaign.title}". ${escrowRMForCampaign > 0 ? `RM ${escrowRMForCampaign.toFixed(2)} held in escrow.` : ''}`,
                     is_read: false,
                     created_at: new Date().toISOString()
                 });
             }
 
-            // 6. BLOCKCHAIN SYNC
+            // 7. BLOCKCHAIN SYNC
             const syncBlockchain = async () => {
                 try {
                     const signer = createKmsSigner(userProfile.kms_key_id!);
@@ -216,14 +246,17 @@ export async function POST(req: Request) {
                         await supabaseAdmin.from("donations")
                             .update({
                                 on_chain_tx_hash: tx.hash,
-                                status: (alloc.index <= newIndex && !alloc.isEscrow) ? "completed" : "escrowed_awaiting_proof"
+                                status: alloc.isEscrow ? "escrowed_awaiting_proof" : "completed"
                             })
                             .match({ stripe_payment_id: paymentId, milestone_index: alloc.index });
 
                         currentNonce++;
                         await tx.wait(1);
                     }
-                } catch (bcError) { console.error("🔗 Blockchain Sync Error:", bcError); }
+                } catch (bcError) { 
+                    console.error("🔗 Blockchain Sync Error:", bcError);
+                    // Don't throw - blockchain is async
+                }
             };
 
             syncBlockchain();
@@ -231,7 +264,8 @@ export async function POST(req: Request) {
             // Notify Donor
             await supabaseAdmin.from("notifications").insert({
                 user_id: donorId,
-                message: `Your donation of RM${amountRM} to "${currentCampaign.title}" was successful!`,
+                message: `✅ Donation successful! RM${amountRM} to "${currentCampaign.title}". ${escrowRMForCampaign > 0 ? `RM ${escrowRMForCampaign.toFixed(2)} held in escrow pending proof.` : ''}`,
+                is_read: false,
                 created_at: new Date().toISOString()
             });
 
