@@ -5,10 +5,11 @@ import Image from "next/image";
 import { 
   CheckCircle2, Lock, Clock, AlertCircle, ChevronDown, 
   Camera, FileText, TrendingUp, Target, Download, ShieldCheck,
-  ExternalLink
+  ExternalLink, XCircle
 } from "lucide-react";
 import { Milestone } from "@/types/ngo";
 import AuditManifestModal from "./AuditManifestModal";
+import { formatDistanceToNow } from 'date-fns';
 
 interface MilestoneCardProps {
   milestone: Milestone;
@@ -29,16 +30,20 @@ const formatCurrency = (amount: number) => {
 export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }: MilestoneCardProps) {
   const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "http://localhost:8999";
   
-  // ✅ Local state for Audit Modal
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
+  // ⭐ UPDATED STATUS LOGIC
   const isLocked = ms.status === 'locked';
-  const isApproved = ms.status === 'approved' || ms.status === 'completed';
-  const isUnderReview = ms.status === 'pending_review';
+  const isActive = ms.status === 'active';
+  const isPendingProof = ms.status === 'pending_proof';
+  const isPendingReview = ms.status === 'pending_review';
+  const isApproved = ms.status === 'approved';
+  const isRejected = ms.status === 'rejected';
+  const isFailedDeadline = ms.status === 'failed_deadline';
 
-  const showProofContent = isApproved; 
+  const showProofContent = isApproved || isPendingReview; 
 
-  // Dynamic Styles Logic
+  // ⭐ UPDATED DYNAMIC STYLES
   let statusColor = "bg-gray-100 text-gray-500 border-gray-200";
   let StatusIcon = Lock;
   let statusLabel = "Locked";
@@ -46,23 +51,27 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
   if (isApproved) {
     statusColor = "bg-green-100 text-green-700 border-green-200";
     StatusIcon = CheckCircle2;
-    statusLabel = "Completed"; 
-  } else if (ms.status === 'active') {
+    statusLabel = "Approved & Released"; 
+  } else if (isActive) {
     statusColor = "bg-blue-100 text-blue-700 border-blue-200";
     StatusIcon = Clock;
-    statusLabel = "In Progress";
-  } else if (ms.status === 'pending_proof') {
-     statusColor = "bg-orange-50 text-orange-600 border-orange-200";
-     StatusIcon = AlertCircle;
-     statusLabel = "Waiting for Proof";
-  } else if (isUnderReview) {
+    statusLabel = "Active - Collecting";
+  } else if (isPendingProof) {
+    statusColor = "bg-orange-50 text-orange-600 border-orange-200";
+    StatusIcon = AlertCircle;
+    statusLabel = "Awaiting NGO Proof";
+  } else if (isPendingReview) {
     statusColor = "bg-purple-100 text-purple-700 border-purple-200"; 
-    StatusIcon = AlertCircle;
-    statusLabel = "Under Audit";
-  } else if (ms.status === 'rejected') {
+    StatusIcon = Clock;
+    statusLabel = "Under Admin Review";
+  } else if (isRejected) {
     statusColor = "bg-red-100 text-red-700 border-red-200";
-    StatusIcon = AlertCircle;
-    statusLabel = "Revision Needed";
+    StatusIcon = XCircle;
+    statusLabel = "Proof Rejected";
+  } else if (isFailedDeadline) {
+    statusColor = "bg-red-200 text-red-900 border-red-300";
+    StatusIcon = XCircle;
+    statusLabel = "Deadline Missed";
   }
 
   return (
@@ -71,7 +80,11 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
         
         {/* Timeline Dot */}
         <div className={`absolute left-4 top-6 w-5 h-5 rounded-full border-4 border-white shadow-sm z-10 hidden md:block transition-colors duration-300 ${
-            isApproved ? 'bg-green-500' : (ms.status === 'active' ? 'bg-blue-500' : 'bg-gray-300')
+            isApproved ? 'bg-green-500' : 
+            isActive ? 'bg-blue-500 animate-pulse' : 
+            isPendingProof || isPendingReview ? 'bg-orange-500' :
+            isRejected || isFailedDeadline ? 'bg-red-500' :
+            'bg-gray-300'
         }`} />
 
         {/* The Card */}
@@ -96,6 +109,14 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
               <h4 className={`text-lg font-bold ${isLocked ? 'text-gray-400' : 'text-gray-900'}`}>
                 {ms.title}
               </h4>
+              
+              {/* ⭐ Show deadline if pending proof */}
+              {isPendingProof && ms.proof_deadline && (
+                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                  <Clock size={12} />
+                  Deadline: {formatDistanceToNow(new Date(ms.proof_deadline), { addSuffix: true })}
+                </p>
+              )}
             </div>
             
             <div className="flex items-center gap-6">
@@ -116,8 +137,55 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
             <div className="overflow-hidden">
               <div className="p-6 border-t border-gray-100 bg-gray-50/50 space-y-8">
                   
-                  {/* IPFS Decentralized Audit Proof (Enhanced) */}
-                  {ms.ipfs_cid && (isUnderReview || isApproved) && (
+                  {/* ⭐ DEADLINE WARNING (if pending proof and close to deadline) */}
+                  {isPendingProof && ms.proof_deadline && (
+                    <div className={`p-4 rounded-lg border ${
+                      new Date(ms.proof_deadline) < new Date(Date.now() + 24 * 60 * 60 * 1000) 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-orange-50 border-orange-200'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className={new Date(ms.proof_deadline) < new Date(Date.now() + 24 * 60 * 60 * 1000) ? 'text-red-600' : 'text-orange-600'} size={20} />
+                        <div>
+                          <p className="font-semibold text-sm">Proof Submission Required</p>
+                          <p className="text-xs text-gray-600">
+                            NGO must submit proof by {new Date(ms.proof_deadline).toLocaleDateString()} or account will be blocked
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ⭐ REJECTION NOTICE */}
+                  {isRejected && ms.auditor_remarks && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <XCircle className="text-red-600 shrink-0 mt-0.5" size={20} />
+                        <div>
+                          <p className="font-semibold text-sm text-red-900">Proof Rejected</p>
+                          <p className="text-xs text-red-700 mt-1">{ms.auditor_remarks}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ⭐ DEADLINE FAILED NOTICE */}
+                  {isFailedDeadline && (
+                    <div className="p-4 bg-red-100 border-2 border-red-300 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <XCircle className="text-red-800 shrink-0 mt-0.5" size={20} />
+                        <div>
+                          <p className="font-bold text-sm text-red-900">Deadline Missed - Account Blocked</p>
+                          <p className="text-xs text-red-800 mt-1">
+                            NGO failed to submit proof within 5-day deadline. Campaign is suspended.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* IPFS Audit Proof */}
+                  {ms.ipfs_cid && (isPendingReview || isApproved) && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <ShieldCheck className="text-green-600 w-5 h-5 shrink-0" />
                       <div className="flex-1 overflow-hidden">
@@ -125,11 +193,10 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                         <p className="text-xs text-green-700 font-mono truncate">{ms.ipfs_cid}</p>
                       </div>
                       
-                      {/* ✅ Verify Button - Opens Modal */}
                       <button 
                         type="button"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevents MilestoneCard from collapsing
+                          e.stopPropagation();
                           setIsAuditModalOpen(true);
                         }}
                         className="text-[10px] bg-[#182F44] text-white px-4 py-2 rounded-xl hover:bg-orange-600 transition-all font-bold whitespace-nowrap shadow-sm active:scale-95"
@@ -157,7 +224,7 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                       
                       {isLocked ? (
                         <div className="text-xs text-gray-400 italic pl-1 flex items-center gap-2">
-                            <Lock size={12} /> Pending start of this phase.
+                            <Lock size={12} /> This phase is locked. Awaiting previous milestone completion.
                         </div>
                       ) : showProofContent && ms.proof_description ? (
                         <div className="relative">
@@ -165,19 +232,29 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                               {ms.proof_description}
                           </p>
                         </div>
-                      ) : isUnderReview ? (
-                        <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center gap-3">
-                           <div className="bg-orange-100 p-2 rounded-full">
-                              <Clock className="text-orange-600 w-4 h-4" />
+                      ) : isPendingReview ? (
+                        <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 flex items-center gap-3">
+                           <div className="bg-purple-100 p-2 rounded-full">
+                              <Clock className="text-purple-600 w-4 h-4" />
                            </div>
                            <div>
-                              <p className="text-sm font-semibold text-orange-800">Evidence Submitted</p>
-                              <p className="text-xs text-orange-600">The NGO has submitted proof of work. It is currently being audited by WheresTheFund admins.</p>
+                              <p className="text-sm font-semibold text-purple-800">Under Review</p>
+                              <p className="text-xs text-purple-600">Proof submitted - awaiting admin approval</p>
+                           </div>
+                        </div>
+                      ) : isPendingProof ? (
+                        <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 flex items-center gap-3">
+                           <div className="bg-orange-100 p-2 rounded-full">
+                              <AlertCircle className="text-orange-600 w-4 h-4" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-semibold text-orange-800">Awaiting Proof Submission</p>
+                              <p className="text-xs text-orange-600">NGO needs to upload evidence of completed work</p>
                            </div>
                         </div>
                       ) : (
                         <div className="text-xs text-gray-400 italic pl-1">
-                          No written update provided yet.
+                          No update provided yet.
                         </div>
                       )}
                   </div>
@@ -196,18 +273,18 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                                   </div>
                               ))}
                           </div>
-                      ) : isUnderReview && ms.proof_images && ms.proof_images.length > 0 ? (
-                          <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                              <Camera size={24} className="text-orange-300 mb-2" />
-                              <span className="text-sm font-medium text-orange-700">Photos under review</span>
-                              <span className="text-xs text-orange-500">{ms.proof_images.length} image(s) hidden until approved</span>
+                      ) : isPendingReview && ms.proof_images && ms.proof_images.length > 0 ? (
+                          <div className="border-2 border-dashed border-purple-200 bg-purple-50/50 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                              <Camera size={24} className="text-purple-300 mb-2" />
+                              <span className="text-sm font-medium text-purple-700">Photos under review</span>
+                              <span className="text-xs text-purple-500">{ms.proof_images.length} image(s) hidden until approved</span>
                           </div>
                       ) : (
                           <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-gray-50">
                               <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mb-2">
                                   <Camera size={20} className="text-gray-400" />
                               </div>
-                              <span className="text-sm font-medium text-gray-500">No photos visible</span>
+                              <span className="text-sm font-medium text-gray-500">No photos yet</span>
                           </div>
                       )}
                   </div>
@@ -228,20 +305,20 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                                           <FileText size={18} />
                                       </div>
                                       <span className="text-sm font-medium text-gray-900 truncate">
-                                          {`Verified_Invoice_${i + 1}`}
+                                          {`Invoice_${i + 1}.pdf`}
                                       </span>
                                   </div>
                                   <Download size={16} className="text-gray-400 group-hover/file:text-green-600 transition-colors" />
                               </a>
                             ))}
                         </div>
-                      ) : isUnderReview && ms.proof_invoices && ms.proof_invoices.length > 0 ? (
-                          <div className="border border-orange-200 bg-orange-50 rounded-lg p-4 flex items-center gap-4">
-                              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
-                                  <FileText size={20} className="text-orange-500" />
+                      ) : isPendingReview && ms.proof_invoices && ms.proof_invoices.length > 0 ? (
+                          <div className="border border-purple-200 bg-purple-50 rounded-lg p-4 flex items-center gap-4">
+                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                                  <FileText size={20} className="text-purple-500" />
                               </div>
-                              <div className="text-sm text-orange-800">
-                                  <span className="font-semibold">Financials Locked.</span> Auditing {ms.proof_invoices.length} document(s).
+                              <div className="text-sm text-purple-800">
+                                  <span className="font-semibold">Under Review.</span> Auditing {ms.proof_invoices.length} document(s).
                               </div>
                           </div>
                       ) : (
@@ -249,18 +326,14 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
                               <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
                                   <FileText size={24} className="text-gray-300" />
                               </div>
-                              <div className="flex flex-col gap-1 w-full">
-                                  <div className="h-2.5 bg-gray-100 rounded w-1/3"></div>
-                                  <div className="h-2 bg-gray-50 rounded w-1/2"></div>
-                              </div>
-                              <div className="text-xs text-gray-400 italic px-2 whitespace-nowrap">
-                                  Awaiting Records
+                              <div className="text-xs text-gray-400 italic">
+                                  Awaiting financial records
                               </div>
                           </div>
                       )}
                   </div>
 
-                  {/* Blockchain Audit Trail (Enhanced) */}
+                  {/* Blockchain Audit Trail */}
                   {isApproved && ms.payout_tx_hash && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                        <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -285,7 +358,6 @@ export default function MilestoneCard({ milestone: ms, index, isOpen, onToggle }
         </div>
       </div>
 
-      {/* ✅ Modal Outside the Card Structure */}
       <AuditManifestModal 
         cid={ms.ipfs_cid || null}
         isOpen={isAuditModalOpen}
