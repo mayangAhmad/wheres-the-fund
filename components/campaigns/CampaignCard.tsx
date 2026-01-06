@@ -1,35 +1,37 @@
+// components/campaigns/CampaignCard.tsx
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Campaign } from '@/types/ngo';
 import wsrvLoader from '@/lib/services/image-service';
 
-// Helper to determine status strictly
-const getCampaignStatus = (campaign: Campaign) => {
+const getCampaignStatus = (campaign: Campaign, isFullyFunded: boolean) => { // ⭐ ADD PARAM
     const now = new Date().getTime();
     const end = new Date(campaign.end_date || '').getTime();
     
-    // Campaign is inactive if past deadline OR status is not Ongoing
     const isPastDeadline = now > end;
     const isOngoing = campaign.status === 'Ongoing';
-    const isActive = !isPastDeadline && isOngoing;
+    const isActive = !isPastDeadline && isOngoing && !isFullyFunded; // ⭐ ADD CHECK
 
     if (!isActive) {
         return { label: 'Ended', isActive: false, color: 'text-red-600' };
     }
     
-    // Calculate days strictly
     const diffTime = end - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return { label: `${diffDays} day${diffDays === 1 ? '' : 's'} left`, isActive: true, color: 'text-gray-600' };
 };
 
-const CampaignCard: React.FC<{ campaign: Campaign; priority?: boolean }> = ({ campaign, priority }) => {
+const CampaignCard: React.FC<{ 
+  campaign: Campaign; 
+  priority?: boolean;
+  isFullyFunded?: boolean; // ⭐ ADD THIS PROP
+}> = ({ campaign, priority, isFullyFunded = false }) => { // ⭐ ADD DEFAULT VALUE
     const collected = Number(campaign.collected_amount) || 0;
     const goal = Number(campaign.goal_amount) || 0;
     const progress = goal > 0 ? (collected / goal) * 100 : 0;
     
-    const { label, isActive, color } = getCampaignStatus(campaign);
+    const { label, isActive, color } = getCampaignStatus(campaign, isFullyFunded); // ⭐ PASS PARAM
 
     const isEnded = campaign.status === 'Completed' || campaign.status === 'Closed';
 
@@ -38,7 +40,6 @@ const CampaignCard: React.FC<{ campaign: Campaign; priority?: boolean }> = ({ ca
             href={`/campaigns/${campaign.id}`}
             className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all flex flex-col h-full group overflow-hidden border border-gray-100"
         >
-            {/* Image Section */}
             <div className="relative w-full h-40 shrink-0 overflow-hidden">
                 <Image
                     loader={wsrvLoader}
@@ -46,12 +47,10 @@ const CampaignCard: React.FC<{ campaign: Campaign; priority?: boolean }> = ({ ca
                     alt={campaign.title}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    // REMOVED grayscale, kept zoom effect for all
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     priority={priority}
                 />
                 
-                {/* Status Badge */}
                 <span className={`absolute top-2 right-2 text-[10px] px-2 py-1 rounded font-bold z-10 
                     ${isActive ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-200'}`}>
                     {isActive ? 'ACTIVE' : 'CLOSED'}
@@ -64,7 +63,6 @@ const CampaignCard: React.FC<{ campaign: Campaign; priority?: boolean }> = ({ ca
                 </h3>
                 <p className="text-sm text-gray-600 mb-4 line-clamp-1">{campaign.ngo_name || 'Anonymous NGO'}</p>
 
-                {/* Progress Section */}
                 <div className="mt-auto pt-2">
                     <div className="flex justify-between text-xs mb-1 font-semibold">
                         <span className="text-orange-600">{progress.toFixed(0)}% Funded</span>
@@ -85,7 +83,6 @@ const CampaignCard: React.FC<{ campaign: Campaign; priority?: boolean }> = ({ ca
                     </div>
                 </div>
 
-                {/* Dynamic Button */}
                 <span
                     className={`mt-4 w-full text-center text-sm font-bold py-2 rounded transition-all
                         ${isActive 
