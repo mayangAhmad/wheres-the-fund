@@ -1,9 +1,12 @@
+// components/campaigns/list-page/CampaignGrid.tsx
 'use client'
 
 import { useFilteredCampaigns } from '@/hooks/useFilteredCampaigns' 
 import { Skeleton } from "@/components/ui/skeleton"
 import CampaignCard from '@/components/campaigns/CampaignCard' 
 import { Campaign } from '@/types/ngo';
+import { useEffect, useState } from 'react';
+import createClient from '@/lib/supabase/client';
 
 interface CampaignGridProps {
   filterStatus: string
@@ -12,7 +15,6 @@ interface CampaignGridProps {
   onReset: () => void
 }
 
-// Reusable Grid Class to ensure Skeleton and Content match exactly
 const gridClassName = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-8"
 
 function CampaignGridSkeleton() {
@@ -48,6 +50,38 @@ export default function CampaignGrid({
     searchTerm,
   });
 
+  // ⭐ ONLY NEW CODE: Calculate which campaigns are fully funded
+  const [fullyFundedSet, setFullyFundedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const checkFunding = async () => {
+      const supabase = createClient();
+      const funded = new Set<string>();
+
+      for (const campaign of filteredCampaigns) {
+        const { data: milestones } = await supabase
+          .from('milestones')
+          .select('target_amount')
+          .eq('campaign_id', campaign.id);
+
+        if (milestones && milestones.length > 0) {
+          const totalGoal = milestones.reduce((sum, m) => sum + Number(m.target_amount), 0);
+          const collected = Number(campaign.collected_amount ?? 0);
+          
+          if (collected >= totalGoal) {
+            funded.add(campaign.id);
+          }
+        }
+      }
+
+      setFullyFundedSet(funded);
+    };
+
+    if (filteredCampaigns.length > 0) {
+      checkFunding();
+    }
+  }, [filteredCampaigns]);
+
   if (loading) {
     return <CampaignGridSkeleton />
   }
@@ -77,10 +111,12 @@ export default function CampaignGrid({
         </span>
       </div>
 
-      {/* SNAP GRID: Uses standard breakpoints for smooth transitions */}
       <div className={gridClassName}>
         {filteredCampaigns.map((campaign: Campaign) => (
-          <CampaignCard key={campaign.id} campaign={campaign} />
+          <CampaignCard 
+            key={campaign.id} 
+            campaign={campaign}
+          />
         ))}
       </div>
     </div>

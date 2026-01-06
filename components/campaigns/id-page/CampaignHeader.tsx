@@ -1,6 +1,7 @@
+// components/campaigns/id-page/CampaignHeader.tsx
 'use client'
 import { useState } from "react";
-import { User, Tag, HeartHandshake, Lock } from "lucide-react"; // Added Lock icon
+import { User, Tag, HeartHandshake, Lock } from "lucide-react";
 import { AmountProgress } from "../AmountProgress";
 import Image from "next/image";
 import DonationModal from "@/components/donation/DonationModal";
@@ -17,15 +18,16 @@ interface HeaderProps {
     tags: string[];
     targetAmount: number;
     collectedAmount: number;
-    status: string | null; // Ensure status is passed in data
+    status: string | null;
+    isFullyFunded: boolean; // ⭐ ONLY ADD THIS LINE
   };
 }
 
 export default function CampaignHeader({ data }: HeaderProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 1. Logic to check if the campaign is finished
-  const isFinished = data.status === 'Completed' || data.status === 'Closed';
+  // ⭐ UPDATED: Check both conditions
+  const isFinished = data.status === 'Completed' || data.status === 'Closed' || data.isFullyFunded;
 
   const percentage = Math.min(
     (data.collectedAmount / (data.targetAmount || 1)) * 100,
@@ -34,7 +36,6 @@ export default function CampaignHeader({ data }: HeaderProps) {
 
   return (
     <div className="flex flex-col md:flex-row gap-6 mb-12 w-full">
-      {/* ... Left: Image Section (Stays the same) ... */}
       <div className="w-full md:w-5/12 h-[250px] md:h-[40vh] shrink-0">
         <div className="relative w-full h-full overflow-hidden rounded-md shadow-lg group">
           <Image
@@ -67,7 +68,6 @@ export default function CampaignHeader({ data }: HeaderProps) {
         </div>
 
         <div className="mt-6 flex flex-col gap-3 pt-3 border-t border-gray-100">
-          {/* Stats & Progress */}
           <div>
             <div className="flex justify-between items-end mb-1">
               <div className="flex items-baseline gap-1">
@@ -82,7 +82,6 @@ export default function CampaignHeader({ data }: HeaderProps) {
                 {percentage}%
               </span>
             </div>
-            {/* AmountProgress handles the dark orange logic we discussed */}
             <AmountProgress
               currentAmount={data.collectedAmount}
               targetAmount={data.targetAmount}
@@ -90,7 +89,6 @@ export default function CampaignHeader({ data }: HeaderProps) {
             />
           </div>
 
-          {/* 2. Conditional Donate Button */}
           <button
             onClick={() => !isFinished && setIsModalOpen(true)}
             disabled={isFinished}
@@ -113,7 +111,6 @@ export default function CampaignHeader({ data }: HeaderProps) {
             )}
           </button>
           
-          {/* Optional: Add a small helper text for clarity */}
           {isFinished && (
             <p className="text-center text-xs text-gray-400 font-medium italic">
               This campaign is no longer accepting donations.

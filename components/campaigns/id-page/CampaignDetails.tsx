@@ -1,3 +1,4 @@
+// components/campaigns/id-page/CampaignDetails.tsx
 'use client';
 
 import React, { useEffect, useState, useContext } from 'react';
@@ -18,7 +19,6 @@ interface PicData {
   contact: string;
 }
 
-// 💡 Removed local Milestone interface to avoid conflicts with @/types/ngo
 interface ExtendedData {
   background: string | null;
   problems: string[] | null;
@@ -44,6 +44,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
   const [basicInfo, setBasicInfo] = useState<Campaign | null>(null);
   const [extendedInfo, setExtendedInfo] = useState<ExtendedData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFullyFunded, setIsFullyFunded] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -52,7 +53,6 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       setLoading(true);
       const supabase = createClient();
 
-      // 1. Basic Info
       let currentBasic = campaigns.find((c) => String(c.id) === String(id)) as Campaign | undefined;
       
       if (!currentBasic) {
@@ -66,7 +66,6 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
       
       if (currentBasic) setBasicInfo(currentBasic);
 
-      // 2. Extended Info
       const { data: heavyData, error } = await supabase
         .from('campaigns')
         .select(`
@@ -84,12 +83,20 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
         .single();
 
       if (heavyData) {
-        // Sort milestones by index to ensure 1 -> 2 -> 3 order
         const sortedMilestones = heavyData.milestones 
           ? heavyData.milestones.sort((a: Milestone, b: Milestone) => a.milestone_index - b.milestone_index)
           : [];
           
         setExtendedInfo({ ...heavyData, milestones: sortedMilestones });
+
+        // ⭐ ONLY NEW CODE: Calculate if fully funded
+        if (currentBasic && sortedMilestones.length > 0) {
+          const totalGoal = sortedMilestones.reduce((sum: number, m: Milestone) => 
+            sum + Number(m.target_amount), 0
+          );
+          const collectedAmount = Number(currentBasic.collected_amount ?? 0);
+          setIsFullyFunded(collectedAmount >= totalGoal);
+        }
       }
 
       if (error) {
@@ -118,7 +125,6 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
     );
   }
 
-  // 💡 FIXED: Added '?? 0' to targetAmount and collectedAmount to satisfy number types
   const headerData = {
     id: basicInfo.id,
     category: basicInfo.category || 'General',
@@ -131,6 +137,7 @@ const CampaignDetails: React.FC<CampaignDetailsProps> = ({ id }) => {
     targetAmount: basicInfo.goal_amount ?? 0,
     collectedAmount: (basicInfo.collected_amount ?? 0) as number,
     status: basicInfo.status,
+    isFullyFunded, // ⭐ ONLY ADD THIS LINE
   };
 
   return (
