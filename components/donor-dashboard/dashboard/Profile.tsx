@@ -1,5 +1,6 @@
-import { Calendar, Edit, Wallet, Mail, User, Phone,TrendingUp, Heart, DollarSign } from "lucide-react";
+import { Calendar, Edit, Wallet, Mail, User, Phone, TrendingUp, Heart, DollarSign } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { calculateBadges, calculateImpactLevel } from "./ProfileBadges";
 import { BaseUser } from "@/types/ngo";
 import { useRouter } from "next/navigation";
@@ -9,16 +10,21 @@ interface DonorStats {
     campaign_id: string;
 }
 
+// ⭐ Extend BaseUser with profile_image_url only in this component
+interface DonorProfile extends BaseUser {
+    profile_image_url?: string | null;
+}
+
 interface Props {
-    profile: BaseUser;
+    profile: DonorProfile; // ⭐ Use extended type
     stats: DonorStats[] | null;
 }
 
 export function Profile({ profile, stats }: Props) {
     const router = useRouter();
     const totalAmounts = stats
-    ? stats.reduce((sum, record) => sum + record.amount, 0) 
-    : 0;
+        ? stats.reduce((sum, record) => sum + record.amount, 0) 
+        : 0;
     const uniqueCampaignCount = stats ? new Set(stats.map(r => r.campaign_id)).size : 0;
 
     const statsSummary = {
@@ -28,6 +34,7 @@ export function Profile({ profile, stats }: Props) {
 
     const earnedBadges = calculateBadges(profile, statsSummary);
     const impactLevel = calculateImpactLevel(uniqueCampaignCount);
+    
     const shortenAddress = (address: string) => {
         if (!address) return "No Wallet Connected";
         return `${address.slice(0, 12)}...${address.slice(-6)}`;
@@ -37,58 +44,73 @@ export function Profile({ profile, stats }: Props) {
         <div className="bg-white border border-gray-200 rounded-xl p-6 md:p-10 shadow-sm h-full flex flex-col justify-between gap-6 w-full overflow-hidden">
             
             {/* 1. TOP SECTION: Identity */}
-        <div className="flex flex-col xl:flex-row items-center xl:items-start justify-between gap-6">
-            <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left min-w-0 ">
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                    <div className="w-30 h-30 rounded-full bg-orange-100 flex items-center justify-center border-4 border-white shadow-sm">
-                        <User className="w-9 h-9 text-orange-600" />
-                    </div>
-                    <div className="absolute bottom-1.5 right-1.5 bg-green-500 border-4 border-white w-6 h-6 rounded-full" />
-                </div>
-
-                <div className="space-y-1 min-w-0 w-full">
-                    <h2 className="text-2xl font-bold text-gray-900 truncate">{profile.name}</h2>
-                    
-                    <div className="flex flex-col gap-2 text-sm text-gray-500">
-                        <div className="flex flex-col md:flex-row flex-wrap justify-start gap-2">
-                            <div className="flex items-center justify-center md:justify-start gap-1.5 min-w-0">
-                            <Mail className="w-3.5 h-3.5 shrink-0" /> 
-                            <span className="truncate">{profile.email}</span>
-                        </div>
-                            {profile.phoneNum && <span className="flex items-center gap-1.5 border-gray-300 md:border-l md:pl-3"><Phone className="w-3.5 h-3.5" /> {profile.phoneNum}</span>}
-                        </div>
-                        
-                        {/* Wallet Address */}
-                        <div className="flex items-center gap-2">
-                            {profile.wallet_address && (
-                                <span className="text-xs text-gray-500 flex gap-1.5">
-                                    <Wallet className="w-3.5 h-3.5" /> {shortenAddress(profile.wallet_address)}
-                                </span>
+            <div className="flex flex-col xl:flex-row items-center xl:items-start justify-between gap-6">
+                <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto text-center md:text-left min-w-0">
+                    {/* Avatar - ⭐ Updated to show profile image */}
+                    <div className="relative shrink-0">
+                        <div className="w-30 h-30 rounded-full bg-orange-100 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden">
+                            {profile.profile_image_url ? (
+                                <Image 
+                                    src={profile.profile_image_url} 
+                                    alt={profile.name}
+                                    width={120}
+                                    height={120}
+                                    className="w-full h-full object-cover"
+                                    priority
+                                />
+                            ) : (
+                                <User className="w-9 h-9 text-orange-600" />
                             )}
                         </div>
+                        <div className="absolute bottom-1.5 right-1.5 bg-green-500 border-4 border-white w-6 h-6 rounded-full" />
+                    </div>
 
-                        {/* JOIN DATE */}
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <Calendar className="w-3.5 h-3.5" /> 
-                            <span>Joined {new Date(profile.created_at).toLocaleString("en-US", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                            }) || "Recently"}</span>
+                    <div className="space-y-1 min-w-0 w-full">
+                        <h2 className="text-2xl font-bold text-gray-900 truncate">{profile.name}</h2>
+                        
+                        <div className="flex flex-col gap-2 text-sm text-gray-500">
+                            <div className="flex flex-col md:flex-row flex-wrap justify-start gap-2">
+                                <div className="flex items-center justify-center md:justify-start gap-1.5 min-w-0">
+                                    <Mail className="w-3.5 h-3.5 shrink-0" /> 
+                                    <span className="truncate">{profile.email}</span>
+                                </div>
+                                {profile.phoneNum && (
+                                    <span className="flex items-center gap-1.5 border-gray-300 md:border-l md:pl-3">
+                                        <Phone className="w-3.5 h-3.5" /> {profile.phoneNum}
+                                    </span>
+                                )}
+                            </div>
+                            
+                            {/* Wallet Address */}
+                            <div className="flex items-center gap-2">
+                                {profile.wallet_address && (
+                                    <span className="text-xs text-gray-500 flex gap-1.5">
+                                        <Wallet className="w-3.5 h-3.5" /> {shortenAddress(profile.wallet_address)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* JOIN DATE */}
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                <Calendar className="w-3.5 h-3.5" /> 
+                                <span>Joined {new Date(profile.created_at).toLocaleString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                }) || "Recently"}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+                
+                <Link 
+                    href="/donor/settings" 
+                    className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2 self-center xl:self-start"
+                >
+                    <Edit className="w-3.5 h-3.5" /> 
+                    Edit Profile
+                </Link>
             </div>
-            
-            <Link 
-                href="/donor/settings" 
-                className="shrink-0 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2 self-center xl:self-start"
-            >
-                <Edit className="w-3.5 h-3.5" /> 
-                Edit Profile
-            </Link>
-        </div>
 
             {/* 2. MIDDLE SECTION: Stats */}
             <div className="bg-gray-50/80 rounded-xl p-5 border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -106,7 +128,7 @@ export function Profile({ profile, stats }: Props) {
                 <div className="flex flex-col items-center justify-center border-r border-gray-200">
                     <div className="flex items-center gap-1.5 text-gray-500 mb-1">
                         <div className="p-1 bg-red-100 rounded-full text-red-500">
-                             <Heart className="w-3.5 h-3.5" />
+                            <Heart className="w-3.5 h-3.5" />
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-wider">Campaigns</span>
                     </div>
@@ -116,9 +138,9 @@ export function Profile({ profile, stats }: Props) {
 
                 <div className="flex flex-col items-center justify-center">
                     <div className="flex items-center gap-1.5 text-gray-500 mb-1">
-                         <div className="p-1 bg-blue-100 rounded-full text-blue-500">
+                        <div className="p-1 bg-blue-100 rounded-full text-blue-500">
                             <TrendingUp className="w-3.5 h-3.5" />
-                         </div>
+                        </div>
                         <span className="text-[10px] font-bold uppercase tracking-wider">Impact Level</span>
                     </div>
                     <span className="text-2xl font-extrabold text-gray-900">{impactLevel}</span>
