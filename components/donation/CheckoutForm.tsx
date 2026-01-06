@@ -49,7 +49,7 @@ export default function CheckoutForm({ amount, isAnonymous }: { amount: number, 
             )}
 
             <Button 
-                onClick={handleSubmit}
+                type="submit"  // Changed from onClick to type="submit"
                 disabled={!stripe || isLoading} 
                 className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-6"
             >
