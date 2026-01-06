@@ -1,3 +1,4 @@
+// app/api/checkout/route.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import Stripe from 'stripe';
@@ -42,79 +43,116 @@ export async function POST(request: Request) {
         // 2. Get Campaign & NGO Banking Details
         const { data: campaign } = await supabaseAdmin
             .from("campaigns")
-            .select("*, ngo_profiles(stripe_account_id)")
+            .select("*, ngo_profiles(stripe_account_id, account_status)")
             .eq("id", campaignId)
             .single();
 
         if (!campaign) throw new Error("Campaign not found.");
+        
         const destAccountId = campaign.ngo_profiles?.stripe_account_id;
+        const ngoAccountStatus = (campaign.ngo_profiles as any)?.account_status;
 
-        // 3. Get Fixed 3 Milestones
+        // ⭐ Check if NGO is blocked
+        if (ngoAccountStatus === 'blocked') {
+            return NextResponse.json({ 
+                error: "This campaign is temporarily suspended. Donations are not being accepted." 
+            }, { status: 403 });
+        }
+
+        // 3. Get Milestones
         const { data: milestones } = await supabaseAdmin
             .from("milestones")
             .select("*")
             .eq("campaign_id", campaignId)
             .order("milestone_index", { ascending: true });
 
-        if (!milestones || milestones.length !== 3) throw new Error("Campaign must have exactly 3 milestones.");
-
-        // 4. Spillover Calculation Logic
-        const currentRaised = Number(campaign.collected_amount || 0);
-        const currentIndex = campaign.current_milestone_index || 0;
-        const currentMilestone = milestones.find(m => m.milestone_index === currentIndex);
-
-        if (!currentMilestone) throw new Error("Current milestone index mismatch.");
-
-        // Calculate the cumulative cap up to the current milestone
-        let currentMilestoneCap = 0;
-        for (let i = 0; i <= currentIndex; i++) {
-            currentMilestoneCap += Number(milestones[i].target_amount);
+        if (!milestones || milestones.length !== 3) {
+            throw new Error("Campaign must have exactly 3 milestones.");
         }
 
+        // ⭐ Check if campaign is fully funded
+        const totalGoal = milestones.reduce((sum, m) => sum + Number(m.target_amount), 0);
+        const currentCollected = Number(campaign.collected_amount || 0);
+        
+        if (currentCollected >= totalGoal) {
+            return NextResponse.json({ 
+                error: "This campaign has reached its funding goal and is no longer accepting donations." 
+            }, { status: 400 });
+        }
+
+        // 4. ⭐ CORRECTED: Calculate Direct vs Escrow (matches webhook logic)
         const donationAmount = Number(amount);
-        const isCurrentMilestoneOpen = currentMilestone.status === 'active';
+        let directAmount = 0;
+        let escrowAmount = 0;
+        let remainingToAllocate = donationAmount;
+        let runningTotal = currentCollected;
 
-        // Calculate split: Immediate Release vs Escrowed (Spillover)
-        // Space left in the currently active phase
-        const spaceInCurrentPhase = Math.max(0, currentMilestoneCap - currentRaised);
+        for (const m of milestones) {
+            const milestoneTarget = Number(m.target_amount);
 
-        // Direct amount is only what can fit in the currently active milestone
-        const directAmount = isCurrentMilestoneOpen ? Math.min(donationAmount, spaceInCurrentPhase) : 0;
+            if (runningTotal < milestoneTarget && remainingToAllocate > 0) {
+                const roomInThisMilestone = milestoneTarget - runningTotal;
+                const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
-        // Everything else is escrowed (to be handled by the dynamic Webhook loop)
-        const escrowAmount = Math.max(0, donationAmount - directAmount);
+                if (amountForThisMilestone > 0) {
+                    // ⭐ Same logic as webhook
+                    const isDirect = (m.status === 'active' || m.status === 'approved');
+                    
+                    if (isDirect) {
+                        directAmount += amountForThisMilestone;
+                    } else {
+                        escrowAmount += amountForThisMilestone;
+                    }
 
-        // Define Transfer Data
-        // Automatic transfer only if 100% of the donation is for the active milestone
-        const canUseAutomaticTransfer = destAccountId && escrowAmount === 0 && isCurrentMilestoneOpen;
+                    remainingToAllocate -= amountForThisMilestone;
+                    runningTotal += amountForThisMilestone;
+                }
+            }
+            
+            if (remainingToAllocate <= 0) break;
+        }
 
-        // 5. Create Payment Intent
+        // 5. ⭐ CORRECTED: Only use automatic transfer if 100% is direct
+        const canUseAutomaticTransfer = destAccountId && escrowAmount === 0 && directAmount > 0;
+
+        // 6. Create Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(donationAmount * 100),
             currency: 'myr',
             customer: stripeCustomerId,
             payment_method_types: ['card', 'fpx'],
             description: escrowAmount > 0
-                ? `Partial Escrow: ${campaign.title}`
-                : `Direct Donation: ${campaign.title}`,
+                ? `${campaign.title} (RM ${directAmount.toFixed(2)} direct + RM ${escrowAmount.toFixed(2)} escrowed)`
+                : `${campaign.title} - Direct Donation`,
             statement_descriptor_suffix: "WheresTheFund",
 
             metadata: {
                 campaignId: campaignId,
                 donorId: user.id,
-                // We pass these amounts as hints for the Webhook to verify
-                directAmount: directAmount.toString(),
-                escrowAmount: escrowAmount.toString(),
-                totalAmount: donationAmount.toString(),
+                directAmount: directAmount.toFixed(2),
+                escrowAmount: escrowAmount.toFixed(2),
+                totalAmount: donationAmount.toFixed(2),
                 is_anonymous: isAnonymous ? "true" : "false"
             },
+            
+            // ⭐ Only use automatic transfer if all money goes direct to NGO
             transfer_data: canUseAutomaticTransfer ? { destination: destAccountId } : undefined,
         });
 
-        return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+        return NextResponse.json({ 
+            clientSecret: paymentIntent.client_secret,
+            // ⭐ Optional: Return breakdown for UI display
+            breakdown: {
+                total: donationAmount,
+                direct: directAmount,
+                escrow: escrowAmount
+            }
+        });
 
     } catch (error: any) {
-        console.error('PAYMENT ERROR:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('CHECKOUT ERROR:', error);
+        return NextResponse.json({ 
+            error: error.message || "Failed to process payment" 
+        }, { status: 500 });
     }
 }
