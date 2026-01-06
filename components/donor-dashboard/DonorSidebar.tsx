@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, Heart, Bell, Settings, PlusCircle, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, Heart, Bell, Settings, LogOut, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { useDonorUser } from "@/context/DonorUserContext";
 
 interface SidebarProps {
@@ -23,7 +23,6 @@ export default function DonorSidebar({ isCollapsed, toggleSidebar }: SidebarProp
   const { user } = useDonorUser();
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
-  const profileImage = "/placeholder.jpg"; 
 
   return (
     <aside 
@@ -34,17 +33,21 @@ export default function DonorSidebar({ isCollapsed, toggleSidebar }: SidebarProp
       <div className={`p-6 border-b border-white/10 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} h-[88px]`}>
         
         {/* Profile Image Container */}
-        <Link href="/ngo/settings">
-        <div className="relative h-10 w-10 shrink-0">
-          <Image 
-            src={profileImage} 
-            alt={user?.name || "Org"}
-            fill
-            sizes="40px"
-            className="rounded-full object-cover border-2 border-white/10"
-            priority
-          />
-        </div>
+        <Link href="/donor/dashboard">
+          <div className="relative h-10 w-10 shrink-0 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-white/10">
+            {user?.profile_image_url ? (
+              <Image 
+                src={user.profile_image_url} 
+                alt={user?.name || "User"}
+                fill
+                sizes="40px"
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <User size={20} className="text-gray-400" />
+            )}
+          </div>
         </Link>
         
         {/* Hide Text when Collapsed */}
@@ -60,9 +63,6 @@ export default function DonorSidebar({ isCollapsed, toggleSidebar }: SidebarProp
 
       {/* 2. Navigation Links */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-        
-
-        {/* Links */}
         {sidebarLinks.map((link) => {
           const isActive = pathname === link.href; 
           
