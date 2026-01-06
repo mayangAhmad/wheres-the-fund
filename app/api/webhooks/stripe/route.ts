@@ -94,16 +94,15 @@ export async function POST(req: Request) {
                 return new NextResponse("Campaign NGO is blocked - donations disabled", { status: 403 });
             }
 
-            // ⭐ CHECK: Is final milestone (M3) fully funded?
-            const finalMilestone = milestones[milestones.length - 1];
-            const totalGoal = Number(finalMilestone?.target_amount || 0);
+            // ⭐ FIX #1: Calculate TOTAL goal (sum of all milestones)
+            const totalGoal = milestones.reduce((sum, m) => sum + Number(m.target_amount), 0);
             const currentCollected = Number(currentCampaign.collected_amount || 0);
             
             if (currentCollected >= totalGoal) {
                 return new NextResponse("Campaign fully funded - donations closed", { status: 400 });
             }
 
-            // 3. 💡 ALLOCATION LOGIC
+            // 3. ALLOCATION LOGIC
             const allocations: Allocation[] = [];
             let remainingToAllocate = amountRM;
             let runningTotal = currentCollected;
@@ -116,7 +115,6 @@ export async function POST(req: Request) {
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
                     if (amountForThisMilestone > 0) {
-                        // ⭐ Escrow logic based on milestone status
                         const isDirect = (m.status === 'active' || m.status === 'approved');
 
                         allocations.push({
@@ -140,7 +138,6 @@ export async function POST(req: Request) {
 
             for (const a of allocations) {
                 if (!a.isEscrow) {
-                    // ⭐ Direct transfer to NGO
                     directRMForCampaign += a.amount;
                     if (ngoStripeId) {
                         try {
@@ -160,7 +157,6 @@ export async function POST(req: Request) {
                         }
                     }
                 } else {
-                    // ⭐ Hold in escrow
                     escrowRMForCampaign += a.amount;
                 }
 
@@ -188,12 +184,27 @@ export async function POST(req: Request) {
                 last_donation_at: new Date().toISOString()
             }).eq("id", campaignId);
 
-            // 6. ⭐ CHECK IF ANY MILESTONE JUST REACHED TARGET
+            // ⭐ FIX #2: Check ALL milestones (not just active ones)
+            // We need to check BOTH:
+            // 1. Milestones that are currently active and just reached target
+            // 2. Milestones that are locked but have accumulated enough funds (spillover)
+            
             for (const m of milestones) {
-                const milestoneReached = newTotalCollected >= Number(m.target_amount);
-                const previouslyActive = m.status === 'active';
+                // Calculate cumulative amount collected up to this milestone
+                let cumulativeTarget = 0;
+                for (let i = 0; i <= m.milestone_index; i++) {
+                    cumulativeTarget += Number(milestones[i].target_amount);
+                }
                 
-                if (milestoneReached && previouslyActive) {
+                const milestoneReached = newTotalCollected >= cumulativeTarget;
+                const wasActive = m.status === 'active';
+                const wasNotNotifiedYet = m.status !== 'pending_proof' && m.status !== 'pending_review' && m.status !== 'approved';
+                
+                // ⭐ Trigger notification if:
+                // - Milestone just reached its cumulative target
+                // - AND milestone is currently active (not locked/approved)
+                // - AND we haven't already set it to pending_proof
+                if (milestoneReached && wasActive && wasNotNotifiedYet) {
                     const deadlineDate = new Date();
                     deadlineDate.setDate(deadlineDate.getDate() + 5);
 
@@ -223,7 +234,7 @@ export async function POST(req: Request) {
                 });
             }
 
-            // 7. ⭐ BLOCKCHAIN SYNC - Record Donation + Update Balances
+            // 7. BLOCKCHAIN SYNC
             const syncBlockchain = async () => {
                 try {
                     const signer = createKmsSigner(userProfile.kms_key_id!);
@@ -233,7 +244,6 @@ export async function POST(req: Request) {
                     const onChainId = BigInt(currentCampaign.on_chain_id);
                     let currentNonce = Number(await campaignContract.nonces(await signer.getAddress()));
 
-                    // Record each donation on-chain
                     for (const alloc of allocations) {
                         const amountWei = parseUnits(alloc.amount.toFixed(2), 18);
                         const paymentRef = `${paymentId}_M${alloc.index}`;
@@ -253,7 +263,7 @@ export async function POST(req: Request) {
                         await tx.wait(1);
                     }
 
-                    // ⭐ NEW: Update campaign balances on smart contract
+                    // Update campaign balances on smart contract
                     if (directRMForCampaign > 0 || escrowRMForCampaign > 0) {
                         const directWei = parseUnits(directRMForCampaign.toFixed(2), 18);
                         const escrowWei = parseUnits(escrowRMForCampaign.toFixed(2), 18);
