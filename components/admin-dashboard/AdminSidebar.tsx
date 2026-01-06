@@ -10,10 +10,10 @@ import {
   LayoutDashboard, 
   FileText, 
   Users, 
+  Clock,
   Settings 
 } from "lucide-react";
 import AdminLogoutButton from "./AdminLogoutButton";
-import { Logo } from "../navbar/Navbar";
 
 const sidebarItems = [
   {
@@ -25,6 +25,11 @@ const sidebarItems = [
     title: "Campaigns",
     href: "/admin/campaigns",
     icon: FileText,
+  },
+  {
+    title: "Deadlines",
+    href: "/admin/deadlines",
+    icon: Clock,
   },
   {
     title: "Users",

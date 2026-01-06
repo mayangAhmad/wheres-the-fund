@@ -1,3 +1,4 @@
+// components/ngo-dashboard/my-campaigns/manage/CampaignManagerClient.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,13 +6,14 @@ import Link from "next/link";
 import { 
   CheckCircle2, Lock, Clock, AlertCircle, 
   Users, TrendingUp, ArrowLeft, XCircle, Link as LinkIcon, 
-  Loader2, Box
+  Loader2, Box, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UpdateMilestoneModal from "./UpdateMilestoneModal";
 import createClient from "@/lib/supabase/client";
+import { formatDistanceToNow } from 'date-fns';
 
-const CHAINLENS_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "http://localhost:8999"; 
+const BLOCKSCOUT_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "http://localhost:8999"; 
 
 interface Props {
   campaign: any;
@@ -90,55 +92,129 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
            
            <div className="space-y-4">
              {milestones.map((ms, index) => {
-               // Logic for statuses based on your Traffic Light system
+               // ⭐ UPDATED STATUS LOGIC
+               const isLocked = ms.status === 'locked';
+               const isActive = ms.status === 'active';
                const isPendingProof = ms.status === 'pending_proof';
-               const isRejected = ms.status === 'rejected';
                const isPendingReview = ms.status === 'pending_review';
                const isApproved = ms.status === 'approved';
-               const isCompleted = ms.status === 'completed' || isApproved;
-               const isActivePhase = ms.status === 'active'; 
-               const isLocked = ms.status === 'locked';
+               const isRejected = ms.status === 'rejected';
+               const isFailedDeadline = ms.status === 'failed_deadline';
+               
                const canSubmitProof = isPendingProof || isRejected;
+               const isDeadlineClose = ms.proof_deadline && new Date(ms.proof_deadline) < new Date(Date.now() + 24 * 60 * 60 * 1000);
 
                return (
                  <div 
                    key={ms.id} 
                    className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
-                     canSubmitProof ? 'border-orange-400 bg-white shadow-md' : 
-                     isCompleted ? 'border-green-100 bg-green-50/30' :
-                     isActivePhase ? 'border-blue-200 bg-white ring-2 ring-blue-50' : 
+                     canSubmitProof ? (isDeadlineClose ? 'border-red-400 bg-red-50/30 shadow-md ring-2 ring-red-100' : 'border-orange-400 bg-white shadow-md') : 
+                     isApproved ? 'border-green-100 bg-green-50/30' :
+                     isActive ? 'border-blue-200 bg-white ring-2 ring-blue-50' :
+                     isFailedDeadline ? 'border-red-300 bg-red-50/50 opacity-75' :
                      'border-gray-100 bg-gray-50 opacity-75'
                    }`}
                  >
                    {/* Status Badge Positioning */}
                    <div className="absolute top-4 right-4">
-                      {isCompleted && <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold"><CheckCircle2 size={12}/> Released</span>}
-                      {isActivePhase && <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-bold"><Clock size={12}/> Active</span>}
-                      {isPendingReview && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold"><Loader2 size={12} className="animate-spin"/> Reviewing</span>}
-                      {isLocked && <span className="flex items-center gap-1 text-gray-400 bg-gray-100 px-2 py-1 rounded-full text-xs font-bold"><Lock size={12}/> Locked</span>}
-                      {isRejected && <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-bold"><XCircle size={12}/> Rejected</span>}
-                      {isPendingProof && <span className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded-full text-xs font-bold animate-pulse"><AlertCircle size={12}/> Action Required</span>}
+                      {isApproved && (
+                        <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold border border-green-200">
+                          <CheckCircle2 size={12}/> Approved & Released
+                        </span>
+                      )}
+                      {isActive && (
+                        <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-bold border border-blue-200">
+                          <Clock size={12}/> Active - Collecting
+                        </span>
+                      )}
+                      {isPendingReview && (
+                        <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-1 rounded-full text-xs font-bold border border-purple-200">
+                          <Loader2 size={12} className="animate-spin"/> Under Review
+                        </span>
+                      )}
+                      {isLocked && (
+                        <span className="flex items-center gap-1 text-gray-400 bg-gray-100 px-2 py-1 rounded-full text-xs font-bold border border-gray-200">
+                          <Lock size={12}/> Locked
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full text-xs font-bold border border-red-200">
+                          <XCircle size={12}/> Proof Rejected
+                        </span>
+                      )}
+                      {isPendingProof && (
+                        <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${
+                          isDeadlineClose 
+                            ? 'text-red-700 bg-red-100 border-red-300 animate-pulse' 
+                            : 'text-orange-600 bg-orange-50 border-orange-200'
+                        }`}>
+                          <AlertCircle size={12}/> {isDeadlineClose ? 'URGENT: Submit Now!' : 'Action Required'}
+                        </span>
+                      )}
+                      {isFailedDeadline && (
+                        <span className="flex items-center gap-1 text-red-900 bg-red-200 px-2 py-1 rounded-full text-xs font-bold border-2 border-red-400">
+                          <XCircle size={12}/> Deadline Missed
+                        </span>
+                      )}
                    </div>
 
                    <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Phase {index + 1}</h4>
                    <h3 className={`text-lg font-bold mb-1 ${isLocked ? 'text-gray-400' : 'text-gray-900'}`}>{ms.title}</h3>
-                   <p className="text-sm text-gray-500 mb-6 line-clamp-2">{ms.description}</p>
+                   <p className="text-sm text-gray-500 mb-4 line-clamp-2">{ms.description}</p>
+
+                   {/* ⭐ DEADLINE DISPLAY */}
+                   {isPendingProof && ms.proof_deadline && (
+                     <div className={`mb-4 p-3 rounded-lg border-l-4 ${
+                       isDeadlineClose 
+                         ? 'bg-red-50 border-red-500' 
+                         : 'bg-orange-50 border-orange-500'
+                     }`}>
+                       <div className="flex items-center gap-2 mb-1">
+                         <AlertTriangle size={16} className={isDeadlineClose ? 'text-red-600' : 'text-orange-600'} />
+                         <p className={`text-xs font-bold ${isDeadlineClose ? 'text-red-800' : 'text-orange-700'}`}>
+                           {isDeadlineClose ? 'CRITICAL: Less than 24 hours left!' : 'Proof Submission Deadline'}
+                         </p>
+                       </div>
+                       <p className={`text-xs ${isDeadlineClose ? 'text-red-700' : 'text-orange-600'}`}>
+                         Due: {new Date(ms.proof_deadline).toLocaleString()} ({formatDistanceToNow(new Date(ms.proof_deadline), { addSuffix: true })})
+                       </p>
+                       <p className="text-xs text-gray-600 mt-1">
+                         ⚠️ Failure to submit will result in account suspension
+                       </p>
+                     </div>
+                   )}
 
                    {/* Alert Messaging */}
-                   {isPendingProof && (
+                   {isPendingProof && !ms.proof_deadline && (
                         <div className="mb-4 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
-                            <p className="text-sm text-orange-700 font-bold italic">"Milestone cap reached. Donations are now held in escrow. Please submit proof of work to unlock funds."</p>
+                            <p className="text-sm text-orange-700 font-bold italic">"Milestone target reached. Donations are now held in escrow. Please submit proof of work to release funds."</p>
                         </div>
                    )}
-                   {isRejected && (
+                   
+                   {isRejected && ms.auditor_remarks && (
                         <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
-                            <p className="text-sm text-red-700 font-bold">Admin Remark:</p>
-                            <p className="text-xs text-red-600 mt-1 italic">{ms.auditor_remarks || "Please provide clearer photos of the distribution."}</p>
+                            <p className="text-sm text-red-700 font-bold">Admin Feedback:</p>
+                            <p className="text-xs text-red-600 mt-1 italic">{ms.auditor_remarks}</p>
+                            <p className="text-xs text-red-500 mt-2 font-semibold">Please address these issues and resubmit.</p>
                         </div>
                    )}
 
-                   {/* IPFS Transparency (Proof of decentralized storage) */}
-                   {(isPendingReview || isCompleted) && ms.ipfs_cid && (
+                   {/* ⭐ DEADLINE FAILED WARNING */}
+                   {isFailedDeadline && (
+                     <div className="mb-4 bg-red-100 border-2 border-red-400 p-4 rounded-lg">
+                       <div className="flex items-center gap-2 mb-2">
+                         <XCircle size={20} className="text-red-800" />
+                         <p className="text-sm font-bold text-red-900">Account Suspended - Deadline Missed</p>
+                       </div>
+                       <p className="text-xs text-red-700">
+                         You failed to submit proof within the 5-day deadline. Your account has been blocked. 
+                         Please contact support to appeal.
+                       </p>
+                     </div>
+                   )}
+
+                   {/* IPFS Transparency */}
+                   {(isPendingReview || isApproved) && ms.ipfs_cid && (
                      <div className="mb-4 p-3 bg-gray-100/50 rounded-lg border border-gray-200 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                            <Box size={14} className="text-gray-400" />
@@ -155,13 +231,13 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
                    )}
 
                    {/* Blockchain Payout Verification */}
-                   {isCompleted && ms.payout_tx_hash && (
+                   {isApproved && ms.payout_tx_hash && (
                      <div className="mt-4 pt-4 border-t border-green-100 flex items-center justify-between">
                         <span className="text-xs text-green-700 font-bold flex items-center gap-1.5">
-                            <LinkIcon size={12} /> Payout Tx Verified
+                            <LinkIcon size={12} /> Payout Verified On-Chain
                         </span>
                         <a 
-                            href={`${CHAINLENS_URL}/tx/${ms.payout_tx_hash}`} 
+                            href={`${BLOCKSCOUT_URL}/tx/${ms.payout_tx_hash}`} 
                             target="_blank" 
                             className="text-[10px] text-blue-600 font-mono hover:underline"
                         >
@@ -171,15 +247,30 @@ export default function CampaignManagerClient({ campaign, milestones: initialMil
                    )}
 
                    {/* Dynamic Action Buttons */}
-                   {canSubmitProof && (
+                   {canSubmitProof && !isFailedDeadline && (
                        <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
                           <Button 
                             onClick={() => openUpdateModal(ms)}
-                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                            className={`font-bold ${
+                              isDeadlineClose 
+                                ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                                : 'bg-orange-600 hover:bg-orange-700'
+                            }`}
                           >
-                             {isRejected ? "Resubmit Evidence" : "Upload Evidence"}
+                             {isRejected ? "Resubmit Evidence" : isDeadlineClose ? "Submit NOW!" : "Upload Evidence"}
                           </Button>
                        </div>
+                   )}
+
+                   {isFailedDeadline && (
+                     <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
+                       <Button 
+                         disabled
+                         className="bg-gray-400 cursor-not-allowed"
+                       >
+                         Submission Disabled
+                       </Button>
+                     </div>
                    )}
                  </div>
                )

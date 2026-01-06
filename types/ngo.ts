@@ -1,5 +1,6 @@
 // types/ngo.ts
 
+// types/ngo.ts (or wherever Milestone is defined)
 export interface Milestone {
   id: string;
   campaign_id: string;
@@ -8,17 +9,19 @@ export interface Milestone {
   description: string;
   funds_allocated_percent: number;
   target_amount: number;
-  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'completed';
+  status: 'locked' | 'active' | 'pending_proof' | 'pending_review' | 'approved' | 'rejected' | 'failed_deadline'; // ⭐ Updated
   proof_description?: string;
   proof_images?: string[];
   proof_invoices?: string[];
-  ipfs_cid?: string;      // For Transparency Card
-  payout_tx_hash?: string | null; // For Blockchain Proof
-  submission_date: string | null;
-  auditor_remarks: string | null;
-  approved_at: string | null;
+  submission_date?: string;
+  auditor_remarks?: string;
+  approved_at?: string;
   created_at: string;
   updated_at: string;
+  payout_tx_hash?: string;
+  ipfs_cid?: string;
+  proof_deadline?: string;
+  proof_submitted_at?: string; 
 }
 
 export interface CampaignSummary {

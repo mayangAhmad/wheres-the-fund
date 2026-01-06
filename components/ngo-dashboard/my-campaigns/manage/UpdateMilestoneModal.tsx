@@ -174,15 +174,16 @@ const handleSubmit = async () => {
 
     // 3. Send CIDs + metadata to your update API
     const res = await fetch('/api/milestones/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        milestone_id: milestone.id,
-        campaign_id: campaignId,
-        proof_description: description,
-        cids: uploadedCIDs,
-      }),
-    });
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    milestone_id: milestone.id,
+    campaign_id: campaignId,
+    proof_description: description,
+    cids: uploadedCIDs,
+    proof_submitted_at: new Date().toISOString(), // ⭐ Add this
+  }),
+});
 
     if (!res.ok) throw new Error('Failed to save records');
 

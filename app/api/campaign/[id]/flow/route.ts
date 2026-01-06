@@ -1,3 +1,4 @@
+// app/api/campaign/[id]/flow/route.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { formatDistanceToNow } from 'date-fns';
@@ -43,13 +44,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         });
 
         const uiMilestones = milestoneDB.map((m) => ({
-
             id: m.id,
             name: m.title,
             targetAmount: m.target_amount,
             currentAmount: totals[m.milestone_index] || 0,
             status: m.status,
-            _index: m.milestone_index
+            _index: m.milestone_index,
+            // ⭐ Add deadline info for UI
+            proof_deadline: m.proof_deadline,
+            proof_submitted_at: m.proof_submitted_at
         }));
 
         const uiDonors = (recentDonations || []).map((d: any) => {
