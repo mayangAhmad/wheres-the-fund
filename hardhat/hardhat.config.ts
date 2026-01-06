@@ -3,12 +3,12 @@ import "@nomicfoundation/hardhat-toolbox";
 import 'dotenv/config'; // Import dotenv to load environment variables
 
 // Get the private key and RPC URL from the .env file
-const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; 
+const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "0x60bbe10a196a4e71451c0f6e9ec9beab454c2a5ac0542aa5b8b733ff5719fec3"; 
 // Fallback is often the default Hardhat test key, but will not work on Quorum
 
 // The Quorum Quickstart exposes the main RPC node on 8545 (for the rpcnode container)
 // If you are connecting to a specific node, use its exposed port (e.g., 20000 for member1)
-const QUORUM_RPC_URL = process.env.QUORUM_RPC_URL || "http://127.0.0.1:8545"; 
+const QUORUM_RPC_URL = process.env.QUORUM_RPC_URL || "http://43.216.155.106:8545"; 
 
 const config: HardhatUserConfig = {
   // Your desired Solidity version

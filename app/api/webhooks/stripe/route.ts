@@ -10,6 +10,7 @@ const CONTRACT_ADDRESS = process.env.CAMPAIGN_FACTORY_ADDRESS!;
 const QUORUM_CHAIN_ID = parseInt(process.env.QUORUM_CHAIN_ID || "1337", 10);
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY!;
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
+const ADMIN_KMS_ID = process.env.ADMIN_KMS_KEY_ID!;
 
 const stripe = new Stripe(STRIPE_SECRET);
 
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
                 return new NextResponse("Campaign fully funded - donations closed", { status: 400 });
             }
 
-            // 3. 💡 CORRECTED ALLOCATION LOGIC
+            // 3. 💡 ALLOCATION LOGIC
             const allocations: Allocation[] = [];
             let remainingToAllocate = amountRM;
             let runningTotal = currentCollected;
@@ -115,10 +116,7 @@ export async function POST(req: Request) {
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
                     if (amountForThisMilestone > 0) {
-                        // ⭐ KEY FIX: Escrow logic based on milestone status
-                        // - 'active': Currently collecting, goes DIRECT to NGO
-                        // - 'approved': Already unlocked, goes DIRECT to NGO  
-                        // - 'locked', 'pending_proof', 'pending_review': Goes to ESCROW
+                        // ⭐ Escrow logic based on milestone status
                         const isDirect = (m.status === 'active' || m.status === 'approved');
 
                         allocations.push({
@@ -159,7 +157,6 @@ export async function POST(req: Request) {
                             });
                         } catch (err) { 
                             console.error("❌ Stripe Transfer Failed:", err);
-                            // Don't throw - log and continue
                         }
                     }
                 } else {
@@ -197,7 +194,6 @@ export async function POST(req: Request) {
                 const previouslyActive = m.status === 'active';
                 
                 if (milestoneReached && previouslyActive) {
-                    // Set 5-day deadline
                     const deadlineDate = new Date();
                     deadlineDate.setDate(deadlineDate.getDate() + 5);
 
@@ -227,14 +223,17 @@ export async function POST(req: Request) {
                 });
             }
 
-            // 7. BLOCKCHAIN SYNC
+            // 7. ⭐ BLOCKCHAIN SYNC - Record Donation + Update Balances
             const syncBlockchain = async () => {
                 try {
                     const signer = createKmsSigner(userProfile.kms_key_id!);
+                    const adminSigner = createKmsSigner(ADMIN_KMS_ID);
                     const campaignContract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
+                    const adminContract = new Contract(CONTRACT_ADDRESS, CampaignABI, adminSigner);
                     const onChainId = BigInt(currentCampaign.on_chain_id);
                     let currentNonce = Number(await campaignContract.nonces(await signer.getAddress()));
 
+                    // Record each donation on-chain
                     for (const alloc of allocations) {
                         const amountWei = parseUnits(alloc.amount.toFixed(2), 18);
                         const paymentRef = `${paymentId}_M${alloc.index}`;
@@ -253,9 +252,23 @@ export async function POST(req: Request) {
                         currentNonce++;
                         await tx.wait(1);
                     }
+
+                    // ⭐ NEW: Update campaign balances on smart contract
+                    if (directRMForCampaign > 0 || escrowRMForCampaign > 0) {
+                        const directWei = parseUnits(directRMForCampaign.toFixed(2), 18);
+                        const escrowWei = parseUnits(escrowRMForCampaign.toFixed(2), 18);
+                        
+                        const updateTx = await adminContract.updateCampaignBalances(
+                            onChainId,
+                            directWei,
+                            escrowWei
+                        );
+                        await updateTx.wait(1);
+                        console.log("✅ Smart contract balances updated:", updateTx.hash);
+                    }
+
                 } catch (bcError) { 
                     console.error("🔗 Blockchain Sync Error:", bcError);
-                    // Don't throw - blockchain is async
                 }
             };
 

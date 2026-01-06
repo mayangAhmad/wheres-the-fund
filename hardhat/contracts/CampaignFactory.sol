@@ -13,16 +13,27 @@ contract CampaignFactory is EIP712, Ownable {
         address ngo;
         string title;
         uint256 targetAmount;
-        uint256 collectedAmount; // Total donations recorded
-        uint256 withdrawnAmount; // Total released to NGO
-        uint256 currentMilestone; // 0 = Phase 1, 1 = Phase 2, 2 = Phase 3
+        uint256 collectedAmount;      // Total donated (including escrow)
+        uint256 releasedAmount;       // Total released to NGO (direct + escrow releases)
+        uint256 escrowBalance;        // Currently held in escrow
+        uint256 currentMilestone;     // 0 = M1, 1 = M2, 2 = M3
         uint256 deadline;
         uint256 createdAt;
         bool closed;
     }
 
-    // CampaignID => MilestoneIndex => IPFS CID (Proof of Work)
-    mapping(uint256 => mapping(uint256 => string)) public milestoneIPFSCIDs;
+    //  Track individual milestone allocations
+    struct MilestoneAllocation {
+        uint256 targetAmount;         // e.g., 20% of total goal
+        uint256 directReleased;       // Amount released directly to NGO
+        uint256 escrowHeld;           // Amount held in escrow for this milestone
+        uint256 escrowReleased;       // Amount released from escrow after approval
+        string ipfsCID;               // Proof of work CID
+        bool approved;                // Whether milestone was approved
+    }
+
+    // CampaignID => MilestoneIndex => Allocation
+    mapping(uint256 => mapping(uint256 => MilestoneAllocation)) public milestoneAllocations;
 
     // 2. Constants
     bytes32 private constant CREATE_CAMPAIGN_TYPEHASH =
@@ -36,7 +47,7 @@ contract CampaignFactory is EIP712, Ownable {
     mapping(uint256 => Campaign) public campaigns;
     mapping(address => uint256) public nonces;
 
-    // 4. Events (Must be defined before usage)
+    // 4. Events
     event CampaignCreated(
         uint256 indexed id,
         address indexed ngo,
@@ -50,19 +61,28 @@ contract CampaignFactory is EIP712, Ownable {
         uint256 indexed onChainId, 
         address indexed donor, 
         uint256 amount, 
-        string paymentRef
+        string paymentRef,
+        bool isEscrow  
     );
 
-    event PayoutAuthorized(
-        uint256 indexed campaignId, 
-        address indexed ngo, 
-        uint256 amount
+    event EscrowReleased(
+        uint256 indexed campaignId,
+        uint256 milestoneIndex,
+        uint256 amount,
+        string ipfsCID
     );
     
-    event MilestoneStatusUpdated(
+    event MilestoneApproved(
         uint256 indexed campaignId, 
-        uint256 newMilestoneIndex,
-        string ipfsCID
+        uint256 milestoneIndex,
+        string ipfsCID,
+        uint256 escrowReleased
+    );
+
+    event CampaignClosed(
+        uint256 indexed campaignId,
+        uint256 totalCollected,
+        uint256 totalReleased
     );
 
     // 5. Constructor
@@ -72,91 +92,6 @@ contract CampaignFactory is EIP712, Ownable {
     {}
 
     // 6. Functions
-
-    // --- DONATION LOGIC ---
-    function donateWithSignature(
-        uint256 onChainId,
-        uint256 amount,
-        string memory paymentRef,
-        uint256 nonce,
-        bytes memory signature
-    ) external {
-        address donor = _recoverDonationSigner(onChainId, amount, paymentRef, nonce, signature);
-        require(donor != address(0), "Invalid signature");
-
-        require(nonces[donor] == nonce, "Invalid nonce");
-        nonces[donor]++;
-
-        Campaign storage campaign = campaigns[onChainId];
-        require(block.timestamp < campaign.deadline, "Campaign has ended"); 
-        require(campaign.id != 0, "Campaign does not exist");
-        require(!campaign.closed, "Campaign is closed");
-        
-        campaign.collectedAmount += amount;
-        
-        emit DonationRecorded(onChainId, donor, amount, paymentRef);
-    }
-
-    // ---------APPROVE MILESTONE-------------------
-    function approveMilestone(uint256 campaignId, string calldata ipfsCID) external onlyOwner {
-    Campaign storage campaign = campaigns[campaignId];
-    require(campaign.id != 0, "Exists");
-    require(campaign.currentMilestone < 3, "All approved"); // 💡 Changed from 2 to 3
-
-    milestoneIPFSCIDs[campaignId][campaign.currentMilestone] = ipfsCID;
-    campaign.currentMilestone += 1;
-
-    if (campaign.currentMilestone == 3) { // 💡 Changed to match your 3-milestone structure
-        campaign.closed = true;
-    }
-    emit MilestoneStatusUpdated(campaignId, campaign.currentMilestone, ipfsCID);
-}
-
-    // --- WITHDRAWAL LOGIC ---
-    function getWithdrawableAmount(uint256 campaignId) public view returns (uint256) {
-        Campaign memory c = campaigns[campaignId];
-        if (c.id == 0) return 0;
-
-        // Calculate CAP based on Milestone Status
-        uint256 allowedCapPercentage;
-
-        if (c.currentMilestone == 0) {
-            allowedCapPercentage = 20; // Phase 1: Cap at 20%
-        } else if (c.currentMilestone == 1) {
-            allowedCapPercentage = 60; // Phase 2: Cap at 20% + 40% = 60%
-        } else {
-            allowedCapPercentage = 100; // Phase 3: Cap at 100%
-        }
-
-        // Calculate limits
-        uint256 hardLimit = (c.targetAmount * allowedCapPercentage) / 100;
-        uint256 availableFunds = c.collectedAmount;
-        
-        if (availableFunds > hardLimit) {
-            availableFunds = hardLimit;
-        }
-
-        if (availableFunds > c.withdrawnAmount) {
-            return availableFunds - c.withdrawnAmount;
-        } else {
-            return 0;
-        }
-    }
-
-    function requestPayout(uint256 campaignId) external {
-        Campaign storage campaign = campaigns[campaignId];
-        require(campaign.id != 0, "Campaign does not exist");
-        require(msg.sender == campaign.ngo, "Only NGO can request payout");
-
-        uint256 amountToRelease = getWithdrawableAmount(campaignId);
-        require(amountToRelease > 0, "No funds available for withdrawal");
-
-        // Update state
-        campaign.withdrawnAmount += amountToRelease;
-
-        // Emit event for Backend
-        emit PayoutAuthorized(campaignId, campaign.ngo, amountToRelease);
-    }
 
     // --- CAMPAIGN CREATION ---
     function createCampaignWithSignature(
@@ -168,8 +103,8 @@ contract CampaignFactory is EIP712, Ownable {
     ) external returns (uint256) {
         address signer = _recoverSigner(title, targetAmount, deadline, nonce, signature);
         require(signer != address(0), "Invalid signature");
-
         require(nonce == nonces[signer], "Bad nonce");
+        
         nonces[signer] += 1;
 
         uint256 id = nextId++;
@@ -179,15 +114,157 @@ contract CampaignFactory is EIP712, Ownable {
             title: title,
             targetAmount: targetAmount,
             collectedAmount: 0,
-            withdrawnAmount: 0,    // Init at 0
-            currentMilestone: 0,   // Init at Phase 1 (Index 0)
+            releasedAmount: 0,
+            escrowBalance: 0,
+            currentMilestone: 0,  // M1 starts active
             deadline: deadline,
             createdAt: block.timestamp,
             closed: false
         });
 
+        // Initialize milestone allocations (20-40-40 split)
+        milestoneAllocations[id][0].targetAmount = (targetAmount * 20) / 100;  // M1: 20%
+        milestoneAllocations[id][1].targetAmount = (targetAmount * 40) / 100;  // M2: 40%
+        milestoneAllocations[id][2].targetAmount = (targetAmount * 40) / 100;  // M3: 40%
+
         emit CampaignCreated(id, signer, title, targetAmount, deadline, block.timestamp);
         return id;
+    }
+
+    // --- DONATION LOGIC ---
+    function donateWithSignature(
+        uint256 onChainId,
+        uint256 amount,
+        string memory paymentRef,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        address donor = _recoverDonationSigner(onChainId, amount, paymentRef, nonce, signature);
+        require(donor != address(0), "Invalid signature");
+        require(nonces[donor] == nonce, "Invalid nonce");
+        
+        nonces[donor]++;
+
+        Campaign storage campaign = campaigns[onChainId];
+        require(campaign.id != 0, "Campaign does not exist");
+        require(!campaign.closed, "Campaign is closed");
+        require(block.timestamp < campaign.deadline, "Campaign has ended");
+        
+        // Update total collected
+        campaign.collectedAmount += amount;
+        
+        // Determine if donation goes to escrow or direct release
+        // This is tracked off-chain in your webhook - blockchain just records the donation
+        // The actual escrow/direct split is handled by your Stripe logic
+        
+        // For simplicity, we emit the event and let off-chain systems handle the split
+        emit DonationRecorded(onChainId, donor, amount, paymentRef, false);
+    }
+
+    // --- MILESTONE APPROVAL (Called by Admin after reviewing proof) ---
+    function approveMilestone(uint256 campaignId, string calldata ipfsCID) external onlyOwner {
+        Campaign storage campaign = campaigns[campaignId];
+        require(campaign.id != 0, "Campaign does not exist");
+        require(campaign.currentMilestone < 3, "All milestones approved");
+
+        uint256 currentIndex = campaign.currentMilestone;
+        MilestoneAllocation storage allocation = milestoneAllocations[campaignId][currentIndex];
+        
+        // Mark milestone as approved and store proof
+        allocation.approved = true;
+        allocation.ipfsCID = ipfsCID;
+        
+        // The actual escrow release amount is tracked off-chain and passed via event
+        // Your backend updates the database accordingly
+        
+        // Move to next milestone
+        campaign.currentMilestone += 1;
+        
+        //Close campaign if all milestones approved
+        if (campaign.currentMilestone == 3) {
+            campaign.closed = true;
+            emit CampaignClosed(campaignId, campaign.collectedAmount, campaign.releasedAmount);
+        }
+        
+        emit MilestoneApproved(campaignId, currentIndex, ipfsCID, allocation.escrowHeld);
+    }
+
+    //Record escrow release (called by your backend after admin approval)
+    function recordEscrowRelease(
+        uint256 campaignId,
+        uint256 milestoneIndex,
+        uint256 amount
+    ) external onlyOwner {
+        Campaign storage campaign = campaigns[campaignId];
+        require(campaign.id != 0, "Campaign does not exist");
+        
+        MilestoneAllocation storage allocation = milestoneAllocations[campaignId][milestoneIndex];
+        require(allocation.approved, "Milestone not approved");
+        
+        //Update balances
+        allocation.escrowReleased += amount;
+        campaign.escrowBalance -= amount;
+        campaign.releasedAmount += amount;
+        
+        emit EscrowReleased(campaignId, milestoneIndex, amount, allocation.ipfsCID);
+    }
+
+    //Update campaign balances (called by webhook after donation)
+    function updateCampaignBalances(
+        uint256 campaignId,
+        uint256 directReleased,
+        uint256 escrowAdded
+    ) external onlyOwner {
+        Campaign storage campaign = campaigns[campaignId];
+        require(campaign.id != 0, "Campaign does not exist");
+        
+        campaign.releasedAmount += directReleased;
+        campaign.escrowBalance += escrowAdded;
+    }
+
+    // --- VIEW FUNCTIONS ---
+    function getCampaignDetails(uint256 campaignId) external view returns (
+        uint256 id,
+        address ngo,
+        string memory title,
+        uint256 targetAmount,
+        uint256 collectedAmount,
+        uint256 releasedAmount,
+        uint256 escrowBalance,
+        uint256 currentMilestone,
+        bool closed
+    ) {
+        Campaign memory c = campaigns[campaignId];
+        return (
+            c.id,
+            c.ngo,
+            c.title,
+            c.targetAmount,
+            c.collectedAmount,
+            c.releasedAmount,
+            c.escrowBalance,
+            c.currentMilestone,
+            c.closed
+        );
+    }
+
+    function getMilestoneDetails(uint256 campaignId, uint256 milestoneIndex) external view returns (
+        uint256 targetAmount,
+        uint256 directReleased,
+        uint256 escrowHeld,
+        uint256 escrowReleased,
+        string memory ipfsCID,
+        bool approved
+    ) {
+        MilestoneAllocation memory allocation = milestoneAllocations[campaignId][milestoneIndex];
+        return (
+            allocation.targetAmount,
+            allocation.directReleased,
+            allocation.escrowHeld,
+            allocation.escrowReleased,
+            allocation.ipfsCID,
+            allocation.approved
+        );
     }
 
     // --- HELPERS ---

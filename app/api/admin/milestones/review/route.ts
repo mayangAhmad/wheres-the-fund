@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import Stripe from "stripe";
-import { Contract } from "ethers";
+import { Contract, parseUnits } from "ethers";
 import { createKmsSigner } from "@/lib/services/kms-service";
 import CampaignABI from "@/lib/abi/CampaignFactory.json";
 
@@ -45,7 +45,6 @@ export async function POST(req: Request) {
 
     // --- PATH A: REJECTION ---
     if (decision === 'reject') {
-        // Reset milestone to pending_proof (NGO gets another chance)
         await supabaseAdmin.from("milestones").update({ 
             status: "pending_proof",
             auditor_remarks: rejectionReason || "Proof rejected - please resubmit"
@@ -63,18 +62,18 @@ export async function POST(req: Request) {
 
     // --- PATH B: APPROVAL & RELEASE ---
     
-    // ⭐ FIX: Only release escrow for THIS milestone
+    // Get escrow amount for THIS milestone only
     const { data: escrowedDonations } = await supabaseAdmin
         .from("donations")
         .select("amount")
         .eq("campaign_id", campaignId)
-        .eq("milestone_index", milestone.milestone_index) // ✅ ONLY THIS MILESTONE
+        .eq("milestone_index", milestone.milestone_index)
         .eq("held_in_escrow", true);
 
     const amountToRelease = escrowedDonations?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
     const proofCID = milestone.ipfs_cid || "No CID";
 
-    // 4. Stripe Transfer
+    // 3. Stripe Transfer (Release Escrow)
     if (amountToRelease > 0 && campaign.ngo_profiles?.stripe_account_id) {
         try {
             await stripe.transfers.create({
@@ -105,7 +104,7 @@ export async function POST(req: Request) {
             .eq("held_in_escrow", true);
     }
 
-    // 5. Update Campaign Balances
+    // 4. Update Campaign Balances
     const currentEscrow = Number(campaign.escrow_balance || 0);
     const currentReleased = Number(campaign.total_released || 0);
 
@@ -117,22 +116,38 @@ export async function POST(req: Request) {
         })
         .eq("id", campaignId);
 
-    // 6. Blockchain Sync
+    // 5. ⭐ BLOCKCHAIN SYNC - Record Escrow Release + Approve Milestone
     let onChainTxHash = null;
     if (campaign.on_chain_id) {
         try {
             const signer = createKmsSigner(ADMIN_KMS_ID);
             const contract = new Contract(CONTRACT_ADDRESS, CampaignABI, signer);
-            const tx = await contract.approveMilestone(campaign.on_chain_id, proofCID);
-            await tx.wait();
-            onChainTxHash = tx.hash;
+            
+            // ⭐ Step 1: Record escrow release on smart contract
+            if (amountToRelease > 0) {
+                const amountWei = parseUnits(amountToRelease.toFixed(2), 18);
+                const releaseTx = await contract.recordEscrowRelease(
+                    campaign.on_chain_id,
+                    milestone.milestone_index,
+                    amountWei
+                );
+                await releaseTx.wait(1);
+                console.log("✅ Escrow release recorded on-chain:", releaseTx.hash);
+            }
+            
+            // ⭐ Step 2: Approve milestone on smart contract
+            const approveTx = await contract.approveMilestone(campaign.on_chain_id, proofCID);
+            await approveTx.wait(1);
+            onChainTxHash = approveTx.hash;
+            console.log("✅ Milestone approved on-chain:", onChainTxHash);
+            
         } catch (bcError) {
             console.error("🔗 Blockchain approval error:", bcError);
             // Don't throw - continue with database updates
         }
     }
 
-    // 7. Update Milestone Statuses
+    // 6. Update Milestone Status
     await supabaseAdmin.from("milestones").update({ 
         status: "approved", 
         approved_at: new Date().toISOString(),
@@ -140,7 +155,7 @@ export async function POST(req: Request) {
         auditor_remarks: "Approved"
     }).eq("id", milestoneId);
 
-    // ⭐ Activate next milestone if it exists
+    // 7. Activate Next Milestone
     const nextMilestoneIndex = milestone.milestone_index + 1;
     const nextMilestone = allMilestones.find(m => m.milestone_index === nextMilestoneIndex);
     
@@ -150,14 +165,14 @@ export async function POST(req: Request) {
             .eq("id", nextMilestone.id);
     }
 
-    // 8. Create payout record
+    // 8. Create Payout Record
     if (amountToRelease > 0) {
         await supabaseAdmin.from("payouts").insert({
             campaign_id: campaignId,
             milestone_id: milestoneId,
             amount: amountToRelease,
             blockchain_approval_tx_hash: onChainTxHash || 'pending',
-            stripe_transfer_id: 'completed', // Update with actual transfer ID if needed
+            stripe_transfer_id: 'completed',
             processed_at: new Date().toISOString()
         });
     }
@@ -174,7 +189,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
         success: true, 
         amountReleased: amountToRelease,
-        nextMilestoneActivated: !!nextMilestone
+        nextMilestoneActivated: !!nextMilestone,
+        blockchainTxHash: onChainTxHash
     });
 
   } catch (error: any) {

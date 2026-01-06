@@ -1,4 +1,4 @@
-[
+ [
     {
       "inputs": [
         {
@@ -81,6 +81,31 @@
         {
           "indexed": true,
           "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalCollected",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalReleased",
+          "type": "uint256"
+        }
+      ],
+      "name": "CampaignClosed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
           "name": "id",
           "type": "uint256"
         },
@@ -144,6 +169,12 @@
           "internalType": "string",
           "name": "paymentRef",
           "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "isEscrow",
+          "type": "bool"
         }
       ],
       "name": "DonationRecorded",
@@ -167,7 +198,13 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "newMilestoneIndex",
+          "name": "milestoneIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
           "type": "uint256"
         },
         {
@@ -177,7 +214,38 @@
           "type": "string"
         }
       ],
-      "name": "MilestoneStatusUpdated",
+      "name": "EscrowReleased",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "milestoneIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "ipfsCID",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "escrowReleased",
+          "type": "uint256"
+        }
+      ],
+      "name": "MilestoneApproved",
       "type": "event"
     },
     {
@@ -197,31 +265,6 @@
         }
       ],
       "name": "OwnershipTransferred",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "campaignId",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "ngo",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "PayoutAuthorized",
       "type": "event"
     },
     {
@@ -279,7 +322,12 @@
         },
         {
           "internalType": "uint256",
-          "name": "withdrawnAmount",
+          "name": "releasedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowBalance",
           "type": "uint256"
         },
         {
@@ -435,6 +483,65 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getCampaignDetails",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "ngo",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "collectedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "releasedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowBalance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentMilestone",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "closed",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "getDomainSeparator",
       "outputs": [
@@ -453,14 +560,44 @@
           "internalType": "uint256",
           "name": "campaignId",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "milestoneIndex",
+          "type": "uint256"
         }
       ],
-      "name": "getWithdrawableAmount",
+      "name": "getMilestoneDetails",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "targetAmount",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "directReleased",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowHeld",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowReleased",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "ipfsCID",
+          "type": "string"
+        },
+        {
+          "internalType": "bool",
+          "name": "approved",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -479,12 +616,37 @@
           "type": "uint256"
         }
       ],
-      "name": "milestoneIPFSCIDs",
+      "name": "milestoneAllocations",
       "outputs": [
         {
+          "internalType": "uint256",
+          "name": "targetAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "directReleased",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowHeld",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowReleased",
+          "type": "uint256"
+        },
+        {
           "internalType": "string",
-          "name": "",
+          "name": "ipfsCID",
           "type": "string"
+        },
+        {
+          "internalType": "bool",
+          "name": "approved",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -523,21 +685,31 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
           "name": "campaignId",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "milestoneIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
         }
       ],
-      "name": "requestPayout",
+      "name": "recordEscrowRelease",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -551,6 +723,29 @@
         }
       ],
       "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "campaignId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "directReleased",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "escrowAdded",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateCampaignBalances",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
