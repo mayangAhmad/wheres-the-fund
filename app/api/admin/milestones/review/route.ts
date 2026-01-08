@@ -88,7 +88,8 @@ export async function POST(req: Request) {
                         metadata: {
                             campaignId: campaignId,
                             milestoneId: milestoneId,
-                            proofCID: proofCID
+                            proofCID: proofCID,
+                            originalPaymentId: donation.stripe_payment_id
                         }
                     });
 
