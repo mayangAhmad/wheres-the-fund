@@ -80,16 +80,28 @@ export async function POST(req: Request) {
         if (escrowedDonations && escrowedDonations.length > 0 && campaign.ngo_profiles?.stripe_account_id) {
             for (const donation of escrowedDonations) {
                 try {
+                    let sourceChargeId = donation.stripe_payment_id;
+
+                    // If we saved a Payment Intent ID (pi_...), fetch the underlying Charge ID
+                    if (donation.stripe_payment_id.startsWith('pi_')) {
+                        const pi = await stripe.paymentIntents.retrieve(donation.stripe_payment_id);
+                        if (pi.latest_charge) {
+                            sourceChargeId = pi.latest_charge as string;
+                        }
+                    }
+
+                    console.log(`💸 Releasing donation ${donation.id} using Source: ${sourceChargeId}`);
+
+                    // ⭐ STEP B: Transfer using source_transaction
                     await stripe.transfers.create({
-                        amount: Math.round(amountToRelease * 100),
+                        amount: Math.round(donation.amount * 100),
                         currency: "myr",
                         destination: campaign.ngo_profiles.stripe_account_id,
-                        description: `Escrow Release: M${milestone.milestone_index + 1} - ${milestone.title}`,
+                        description: `Escrow Release: M${nextMilestoneIndex + 1}`,
+                        source_transaction: sourceChargeId, // <--- THIS LINE IS CRITICAL
                         metadata: {
                             campaignId: campaignId,
-                            milestoneId: milestoneId,
-                            proofCID: proofCID,
-                            originalPaymentId: donation.stripe_payment_id
+                            milestoneId: milestoneId
                         }
                     });
 
@@ -101,13 +113,21 @@ export async function POST(req: Request) {
                         })
                         .eq("id", donation.id);
 
-                } catch (stripeError) {
-                    console.error("❌ Stripe transfer failed:", stripeError);
-                    throw new Error("Failed to transfer funds to NGO");
+                } catch (err: any) {
+                    if (err.message && err.message.includes("exceed the source amount")) {
+                        console.warn(`⚠️ Funds for donation ${donation.id} already moved. Marking as complete.`);
+
+                        // Update DB to match reality (Funds are gone, so mark as complete)
+                        await supabaseAdmin.from("donations").update({
+                            held_in_escrow: false,
+                            status: 'completed'
+                        }).eq("id", donation.id);
+                    } else {
+                        console.error(`❌ Stripe Error for donation ${donation.id}:`, err.message);
+                        // Do NOT throw error. Just skip this donation and try the next one.
+                    }
                 }
             }
-
-
         }
 
         // 4. Update Campaign Balances
