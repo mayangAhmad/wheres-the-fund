@@ -118,13 +118,27 @@ export async function POST(req: Request) {
                     const amountForThisMilestone = Math.min(remainingToAllocate, roomInThisMilestone);
 
                     if (amountForThisMilestone > 0) {
-                        const isDirect = (m.status === 'active' || m.status === 'approved');
+                        let isReleased = false;
+
+                        if (m.milestone_index === 0) {
+                            // First milestone is always released so they can start
+                            isReleased = true;
+                        } else {
+                            // Find the previous milestone (index - 1)
+                            const prevMilestone = milestones.find(p => p.milestone_index === m.milestone_index - 1);
+
+                            // If previous is approved, release this one. 
+                            // Also if THIS one is somehow already approved, release it.
+                            if (prevMilestone?.status === 'approved' || m.status === 'approved') {
+                                isReleased = true;
+                            }
+                        }
 
                         allocations.push({
                             index: m.milestone_index,
                             amount: amountForThisMilestone,
                             id: m.id,
-                            isEscrow: !isDirect,
+                            isEscrow: !isReleased,
                             milestoneStatus: m.status
                         });
 
@@ -175,7 +189,7 @@ export async function POST(req: Request) {
                     milestone_index: a.index,
                     milestone_id: a.id,
                     held_in_escrow: a.isEscrow,
-                    status: a.isEscrow ? "escrowed_awaiting_proof" : "pending_blockchain_sync",
+                    status: "pending_blockchain_sync",
                     is_anonymous: isAnonymousBool
                 });
             }
