@@ -60,7 +60,7 @@ export default function Nav() {
   const NAV_MENU_ITEMS: MenuItem[] = [
     { title: "Home", url: "/" },
     { title: "Campaigns", url: "/campaigns" },
-    { title: "Verified?", url: "/ngos" },
+    { title: "Verified NGOs", url: "/ngos" },
     { title: "Dashboard", url: dashboardUrl },
   ];
 

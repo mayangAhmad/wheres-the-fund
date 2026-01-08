@@ -50,7 +50,7 @@ export default function VerificationModal({ donation, isOpen, onClose }: { donat
               target="_blank"
               className="text-xs text-purple-600 font-semibold hover:underline flex items-center gap-1"
             >
-              View Chainlens Explorer <ExternalLink size={12} />
+              View Blockscout Explorer <ExternalLink size={12} />
             </a>
           </div>
         </div>
