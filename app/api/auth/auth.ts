@@ -82,7 +82,7 @@ export async function registerNgoAction(
 
   // SSM VERIFICATION 
   try {
-    const mockUrl = new URL("https://68f342dafd14a9fcc4283dd6.mockapi.io/ngos/ngos-verification");
+    const mockUrl = new URL("https://68f342dafd14a9fcc4283dd6.mockapi.io/ngos-verification");
     mockUrl.searchParams.append("ssmNumber", ssmNumber.trim());
 
     const ssmRes = await fetch(mockUrl.toString(), { 
