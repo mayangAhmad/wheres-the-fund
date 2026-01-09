@@ -108,11 +108,14 @@ export async function registerNgoAction(
   }
 
   // Create Auth User
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { name: orgName, role: "ngo", ssm_number: ssmNumber } },
-  });
+const { data: authData, error: authError } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { 
+    emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/ngo/dashboard`,
+    data: { name: orgName, role: "ngo", ssm_number: ssmNumber } 
+  },
+});
 
   if (authError) return { error: authError.message };
   if (!authData.user) return { error: "Something went wrong creating the user." };
@@ -196,11 +199,14 @@ export async function registerDonorAction(
   const { email, password, name } = validated.data;
 
   // Create Auth User
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { name, role: "donor" } },
-  });
+const { data: authData, error: authError } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { 
+    emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/donor/dashboard`,
+    data: { name, role: "donor" } 
+  },
+});
 
   if (authError) return { error: authError.message };
   if (!authData.user) return { error: "User creation failed." };
