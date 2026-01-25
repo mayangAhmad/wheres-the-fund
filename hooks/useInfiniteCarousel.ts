@@ -8,6 +8,7 @@ export function useInfiniteCarousel(totalItems: number, visibleItems: number) {
   const [cardWidth, setCardWidth] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const [isReady, setIsReady] = useState(false)
 
   // 1. Measure card width
   const measure = useCallback(() => {
@@ -20,6 +21,7 @@ export function useInfiniteCarousel(totalItems: number, visibleItems: number) {
         const gap = parseFloat(parentStyle.columnGap) || parseFloat(parentStyle.gap) || 0
         // Calculate total movement width (card + gap)
         setCardWidth(firstCard.offsetWidth + gap)
+        setIsReady(true)
       }
     }
   }, [])
@@ -42,7 +44,7 @@ export function useInfiniteCarousel(totalItems: number, visibleItems: number) {
   useEffect(() => {
     const timer = setTimeout(() => {
       measure()
-    }, 100)
+    }, 200)
     
     return () => clearTimeout(timer)
   }, [totalItems, measure])
@@ -103,5 +105,6 @@ export function useInfiniteCarousel(totalItems: number, visibleItems: number) {
     isTransitioning,
     translateX: -(index * cardWidth),
     containerRef,
+    isReady
   }
 }
