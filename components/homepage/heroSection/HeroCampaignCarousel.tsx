@@ -1,3 +1,4 @@
+// HeroCampaignCarousel.tsx
 'use client'
 
 import { useMemo } from 'react'
@@ -38,7 +39,8 @@ const filteredCampaigns = useMemo(() => {
     disableAnimation,
     isTransitioning,
     translateX,
-    containerRef
+    containerRef,
+    isReady
   } = useInfiniteCarousel(filteredCampaigns.length, visibleItems)
 
   const infiniteCampaigns = useMemo(() => {
@@ -55,6 +57,11 @@ const filteredCampaigns = useMemo(() => {
   })
 
   if (filteredCampaigns.length === 0) return null
+  if (!isReady) return ( // ✅ Show placeholder while measuring
+  <div className="w-full h-64 flex items-center justify-center">
+    <div className="animate-pulse text-white">Loading campaigns...</div>
+  </div>
+)
 
   return (
     <div 
