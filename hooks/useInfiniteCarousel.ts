@@ -38,6 +38,15 @@ export function useInfiniteCarousel(totalItems: number, visibleItems: number) {
     return () => clearTimeout(timer)
   }, [visibleItems, measure])
 
+  // 2b. Measure card width on mount and when totalItems changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      measure()
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [totalItems, measure])
+
   // 3. Measure on window resize
   useEffect(() => {
     window.addEventListener('resize', measure)
