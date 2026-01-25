@@ -79,7 +79,22 @@ export default function HomeHero2({ campaigns }: HomeHero2Props) {
         >
           {/* Allow full width on tablet to accommodate 3 cards comfortably */}
           <div className="w-full max-w-5xl"> 
-             <HeroCampaignCarousel campaigns={campaigns} />
+             {/* DEBUG: Check if campaigns are received */}
+<div className="text-white bg-red-500/50 p-4 rounded">
+  <p>Total campaigns received: {campaigns?.length || 0}</p>
+  <p>Filtered campaigns: {campaigns?.filter(c => {
+    const category = (c.category || "").toLowerCase().trim();
+    const allowedKeywords = ['disaster', 'hunger'];
+    const isMatchCategory = allowedKeywords.some(kw => category.includes(kw));
+    const status = (c.status || "").toLowerCase().trim();
+    const isActive = status === 'ongoing' || status === 'active';
+    return isMatchCategory && isActive;
+  }).length || 0}</p>
+  <details>
+    <summary>Campaign details</summary>
+    <pre className="text-xs">{JSON.stringify(campaigns?.slice(0, 3), null, 2)}</pre>
+  </details>
+</div>
           </div>
         </motion.div>
       </section>
